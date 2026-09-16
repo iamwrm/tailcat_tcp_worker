@@ -14,6 +14,9 @@
   license reproduced in `GVISOR-LICENSE`. During the build a private copy of the
   pinned dependency receives the additional method in `scripts/gonet-drain.go.txt`
   to wait for TCP shutdown acknowledgement; the shared module cache is unchanged.
+- [ssh2](https://github.com/mscdex/ssh2), Brian White and contributors, MIT,
+  pinned in `package-lock.json`. Used only by the Node SSH/SFTP client tools.
+  Its copyright and license accompany the installed package.
 - Cloudflare's Wrangler, Miniflare, and workerd are used as build/test tools.
 
 The dependency graph and exact versions are recorded in `worker/go.mod`, `worker/go.sum`, and

@@ -7,6 +7,34 @@ the Worker. The original managed SSH command and curl shell endpoints remain.
 
 **Live:** https://tailcat-ssh-worker.iamwrm.workers.dev
 
+## Node SSH, file copies and rsync
+
+A local `ssh` or `scp` executable is optional. The Node client implements SSH
+using `ssh2`, with mandatory host-key verification and credentials kept local:
+
+```sh
+git clone https://github.com/iamwrm/tailcat_tcp_worker.git
+cd tailcat_tcp_worker
+npm ci --omit=dev
+export TAILCAT_ADDR='tc…'
+export SSH_USER='your-user'
+export SSH_KEY="$HOME/.ssh/id_ed25519"
+export SSH_HOST_KEY='SHA256:trusted-server-fingerprint'
+
+node client/ssh.mjs exec -- 'uname -a'
+node client/ssh.mjs shell
+node client/ssh.mjs upload ./file.txt /tmp/file.txt
+node client/ssh.mjs download /tmp/file.txt ./downloaded.txt
+rsync -rt -e 'node client/ssh.mjs rsh' ./source/ "$SSH_USER@target:/tmp/destination/"
+```
+
+File copies use SFTP. Actual rsync still requires rsync locally and remotely;
+the Node helper replaces its SSH transport. These tools use the existing
+`/v1/transport` endpoint and need **no Worker redeployment**. See
+[client usage](client/README.md) for encrypted keys, recursive copies, exact
+path semantics, API use and limitations. For the Worker build/test workflow below,
+use full `npm ci` to include development dependencies.
+
 ## Native SSH and user-provided tools
 
 Requires Node.js 22.15+ (tested with Node 26) for the dependency-free local adapter.
@@ -310,6 +338,16 @@ Set `BINARY_CHUNKS=273` to stress with 17,891,328 bytes. This exceeded the curre
 Free deployment's CPU limit; the default smoke test stays small. After a platform
 termination, the admission lease expires within 15 seconds of its last renewal.
 
+For Node SSH, SFTP, real rsync and PTY/terminal checks against your own server:
+
+```sh
+# Set TAILCAT_ADDR, SSH_USER, SSH_KEY and SSH_HOST_KEY first.
+python3 scripts/live-node-ssh-smoke.py
+```
+
+This harness uses no local SSH executable for client operations. It needs rsync
+locally and remotely, and creates/removes its own temporary remote directory.
+
 For interactive curl, PTY input, resizing, Ctrl+C, and a 35-second idle interval:
 
 ```sh
@@ -384,6 +422,7 @@ edit the originals in `client/` and `PROTOCOL.md`. Go module files live in
 - `scripts/gonet-drain.go.txt`: minimal TCP shutdown addition, applied to a private dependency copy during build.
 - `worker/src/index.js`: HTTP API, bounded input, streaming response, per-request runtime cleanup.
 - `worker/src/shell.js`, `worker/src/shell-websocket.js`: interactive input, framing, and flow control.
+- `client/ssh.mjs`, `client/ssh-client.mjs`, `client/sftp.mjs`: Node SSH, SFTP and rsync remote-shell tools.
 - `client/shell.py`: macOS/Linux terminal wrapper using curl as its transport.
 - `scripts/build.mjs`: Wasm compilation and scoped Go runtime adapter; no `eval`.
 - `worker/public/`: Website; no third-party scripts or external assets.

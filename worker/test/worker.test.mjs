@@ -5,16 +5,22 @@ import { createInterface } from 'node:readline';
 import { mkdirSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
+import { connectSSH, runCommand } from '../../client/ssh-client.mjs';
+import { copyFiles } from '../../client/sftp.mjs';
+import { startSSHFixture } from '../../client/test/ssh-fixture.mjs';
+import { PassThrough, Readable, Writable } from 'node:stream';
+import * as fs from 'node:fs/promises';
 import { openTcp } from '../../client/transport-client.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { writeFileSync, rmSync } from 'node:fs';
 
 const root = fileURLToPath(new URL('../',import.meta.url));
-let mf, fixture, credentials, config;
+let mf, fixture, credentials, config, nodeFixture;
 before(async()=>{
  mkdirSync(root+'test/.tmp',{recursive:true});
+ nodeFixture=await startSSHFixture(root+'test/.tmp/');
  execFileSync('go',['build','-o','test/.tmp/fixture','./test/fixture'],{cwd:root,env:{...process.env,GOTOOLCHAIN:'go1.27.1'},stdio:'pipe'});
- fixture=spawn(root+'test/.tmp/fixture',[],{cwd:root,env:{...process.env,TS_DEBUG_USE_DERP_HTTP:'true'},stdio:['ignore','pipe','pipe']});
+ fixture=spawn(root+'test/.tmp/fixture',[],{cwd:root,env:{...process.env,TS_DEBUG_USE_DERP_HTTP:'true',TEST_SFTP_PORT:String(nodeFixture.port)},stdio:['ignore','pipe','pipe']});
  fixture.stderr.on('data',()=>{});
  const lines=createInterface({input:fixture.stdout});
  credentials=await Promise.race([
@@ -26,7 +32,7 @@ before(async()=>{
  mf=new Miniflare(convertV4MiniflareOptions(config));
  await mf.ready;
 }, {timeout:180000});
-after(async()=>{await mf?.dispose();fixture?.kill('SIGTERM')});
+after(async()=>{await mf?.dispose();fixture?.kill('SIGTERM');await nodeFixture?.close()});
 
 async function tcp(port, extra={}) {
  return openTcp({url:String(await mf.ready),address:credentials.tailcat_address,port,allowLocal:true,timeout:20,...extra});
@@ -331,3 +337,79 @@ test('runtime admission stays reserved during an idle connection beyond the leas
  }finally{first.close();await settled()}
  const next=await tcp(7005);next.close();await settled();
 }, {timeout:30000});
+
+async function nodeSSH(extra={}) {
+ return connectSSH({url:String(await mf.ready),address:credentials.tailcat_address,port:22,allowLocal:true,timeout:30,username:credentials.username,privateKey:credentials.private_key,hostKey:credentials.host_key_sha256,...extra});
+}
+function sink(slow=false) { const chunks=[];return {chunks,stream:new Writable({highWaterMark:1024,write(b,e,cb){chunks.push(Buffer.from(b));if(slow)setTimeout(cb,2);else cb()}})} }
+
+test('Node SSH executes without OpenSSH and returns separate streams and exit status',async()=>{
+ const s=await nodeSSH();const out=sink(),err=sink();
+ try { assert.equal(await runCommand(s,'probe',{input:null,output:out.stream,errorOutput:err.stream}),7);assert.equal(Buffer.concat(out.chunks).toString(),'hello from SSH through Tailcat\n');assert.equal(Buffer.concat(err.chunks).toString(),'stderr is separate\n'); }
+ finally{s.close();await settled()}
+});
+
+test('Node SSH rejects wrong host fingerprints and authentication keys',async()=>{
+ const before=await(await fetch(credentials.stats_url)).json();
+ await assert.rejects(nodeSSH({hostKey:'SHA256:'+'A'.repeat(43)}),/host key mismatch/);await settled();
+ await assert.rejects(nodeSSH({privateKey:credentials.wrong_private_key}),/authentication/i);await settled();
+ assert.equal((await(await fetch(credentials.stats_url)).json()).executions,before.executions);
+});
+
+test('Node SSH preserves binary stdin/stdout under backpressure',async()=>{
+ const s=await nodeSSH(),payload=randomBytes(300003),out=sink(true),err=sink();
+ try{assert.equal(await runCommand(s,'cat',{input:Readable.from([payload]),output:out.stream,errorOutput:err.stream}),0);
+  await new Promise(resolve=>out.stream.end(resolve));assert.deepEqual(Buffer.concat(out.chunks),payload);
+ }finally{s.close();await settled()}
+});
+
+test('Node SSH library opens a PTY and resizes it',async()=>{
+ const s=await nodeSSH(),input=new PassThrough(),out=sink(),err=sink();let channel;
+ try{
+  const running=runCommand(s,'',{input,output:out.stream,errorOutput:err.stream,shell:{term:'xterm-256color',rows:31,cols:91},onChannel:c=>{channel=c}});
+  running.catch(()=>{});
+  await eventually(()=>Buffer.concat(out.chunks).toString().includes('PTY ready:31x91'));
+  channel.setWindow(42,112,0,0);await eventually(()=>Buffer.concat(out.chunks).toString().includes('resize:42x112'));
+  input.write('\x03');await eventually(()=>Buffer.concat(out.chunks).toString().includes('interrupted'));
+  input.end('exit\n');assert.equal(await running,0);
+ }finally{s.close();await settled()}
+});
+
+test('Node host verification rejects the server before user authentication',async()=>{
+ const before=nodeFixture.stats.authentications;
+ await assert.rejects(nodeSSH({...nodeFixture,port:7006,hostKey:'SHA256:'+'A'.repeat(43)}),/host key mismatch/);
+ assert.equal(nodeFixture.stats.authentications,before);await settled();
+});
+
+test('Node SFTP copies binary files and recursive trees using an encrypted key',async()=>{
+ const s=await nodeSSH({...nodeFixture,port:7006});
+ const dir=await fs.mkdtemp(root+'test/.tmp/copy-');
+ try {
+  const payload=randomBytes(200003);await fs.writeFile(dir+'/input file.bin',payload);
+  assert.deepEqual(await copyFiles(s,'upload',dir+'/input file.bin','/remote file.bin'),{files:1,bytes:payload.length});
+  assert.deepEqual(await fs.readFile(nodeFixture.directory+'/remote file.bin'),payload);
+  assert.deepEqual(await copyFiles(s,'download','/remote file.bin',dir+'/out file.bin'),{files:1,bytes:payload.length});
+  assert.deepEqual(await fs.readFile(dir+'/out file.bin'),payload);
+  await fs.mkdir(dir+'/tree');await fs.mkdir(dir+'/tree/sub');await fs.writeFile(dir+'/tree/sub/🐈 file.txt','unicode content');
+  await copyFiles(s,'upload',dir+'/tree','/tree',{recursive:true});await copyFiles(s,'download','/tree',dir+'/result',{recursive:true});
+  assert.equal(await fs.readFile(dir+'/result/sub/🐈 file.txt','utf8'),'unicode content');
+  await assert.rejects(copyFiles(s,'upload',dir+'/tree','/needs-recursive'),/recursive/);
+  await fs.symlink('/outside-fixture',nodeFixture.directory+'/link');
+  await assert.rejects(copyFiles(s,'download','/link',dir+'/link'),/Symbolic links/);
+  await assert.rejects(copyFiles(s,'upload',dir+'/input file.bin','/remote file.bin'));
+  assert.deepEqual(await fs.readFile(nodeFixture.directory+'/remote file.bin'),payload);
+  assert.ok(!(await fs.readdir(nodeFixture.directory)).some(n=>n.endsWith('.part')));
+ }finally{s.close();await fs.rm(dir,{recursive:true,force:true});await settled()}
+});
+
+test('Node exec and rsync remote-shell CLI run with no ssh executable on PATH',async()=>{
+ const key=root+'test/.tmp/node-cli-key';writeFileSync(key,credentials.private_key,{mode:0o600});
+ const env={...process.env,PATH:root+'test/.tmp/no-binaries',TAILCAT_ADDR:credentials.tailcat_address,SSH_USER:credentials.username,SSH_KEY:key,SSH_HOST_KEY:credentials.host_key_sha256};
+ try{
+  for(const mode of ['exec','rsh']){
+   const args=[root+'../client/ssh.mjs',mode,'--url',String(await mf.ready),'--allow-local',...(mode==='rsh'?['-l',credentials.username,'fixture']:['--']),'probe'];
+   const r=await childResult(spawn(process.execPath,args,{env,stdio:['pipe','pipe','pipe']}),'');
+   assert.equal(r.code,7,r.err);assert.equal(r.out,'hello from SSH through Tailcat\n');assert.equal(r.err,'stderr is separate\n');await settled();
+  }
+ }finally{rmSync(key,{force:true})}
+});

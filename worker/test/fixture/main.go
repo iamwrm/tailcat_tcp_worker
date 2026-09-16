@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -98,6 +99,10 @@ func main() {
 			panic("No public relay selected")
 		}
 	}
+	sftpPort, _ := strconv.Atoi(os.Getenv("TEST_SFTP_PORT"))
+	if sftpPort < 1 || sftpPort > 65535 {
+		sftpPort = 0
+	}
 	tc := &tailcat.Server{Region: region, Logf: logger.Discard}
 	tc.OnTCP = func(port uint16) func(net.Conn) {
 		if port == 7001 {
@@ -135,12 +140,15 @@ func main() {
 		if port == 7005 {
 			return func(c net.Conn) { defer c.Close(); io.Copy(io.Discard, c) }
 		}
-		if port != 22 && port != 80 {
+		if port != 22 && port != 80 && !(port == 7006 && sftpPort != 0) {
 			return nil
 		}
 		return func(c net.Conn) {
 			defer c.Close()
 			targetAddr := sshListener.Addr().String()
+			if port == 7006 {
+				targetAddr = net.JoinHostPort("127.0.0.1", strconv.Itoa(sftpPort))
+			}
 			if port == 80 {
 				targetAddr = relay.Addr().String()
 			}
@@ -255,6 +263,8 @@ func serveSSH(c net.Conn, config *ssh.ServerConfig, execCount *atomic.Int32) {
 				req.Reply(true, nil)
 				var exit uint32
 				switch payload.Command {
+				case "cat":
+					io.Copy(channel, channel)
 				case "probe":
 					io.WriteString(channel, "hello from SSH through Tailcat\n")
 					io.WriteString(channel.Stderr(), "stderr is separate\n")
