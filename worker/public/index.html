@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tailcat / TCP gateway</title>
+<link rel="stylesheet" href="/style.css">
+<body>
+<header><a href="/" class="brand"><span class="mark">↗</span> tailcat<span class="muted"> / worker</span></a><span class="badge">EXPERIMENTAL</span></header>
+<main>
+<div class="intro"><span class="eyebrow">YOUR KEY. YOUR MACHINE.</span><h1>Your tools. Your connection.</h1><p>Use native SSH or your own TCP client through Tailcat.<br>No website account needed.</p></div>
+<section class="curl-section"><div><span class="eyebrow">NATIVE SSH · ANY TCP CLIENT</span><h2>Bring your own tool.</h2><p>Download the <a href="/transport.mjs" download>local adapter</a> and <a href="/transport-client.mjs" download>client SDK</a> into the same folder. Requires Node.js 22.15+.</p><p>Native SSH keeps your SSH private key on your machine. Supply the Tailcat address and connect with your usual SSH client.</p><p><a href="/transport-protocol.txt">Custom client protocol</a> · One active connection per Worker isolate.</p></div><pre><code>export TAILCAT_ADDR='tc…'
+ssh -o "ProxyCommand=node $PWD/transport.mjs stdio --port 22" user@host
+
+# Or expose a service on a local port:
+node transport.mjs forward --listen 127.0.0.1:8080 --port 80
+# Then use your existing client:
+curl http://127.0.0.1:8080/</code></pre></section>
+<p>The form below runs SSH inside the Worker and requires an SSH key upload. It can hit the current Free plan CPU limit (error 1102); use native SSH above for the tested command path.</p>
+<div class="workspace">
+<form id="command-form" autocomplete="off">
+<div class="section-label"><span>01 / CONNECTION</span><span>No account needed</span></div>
+<label>Tailcat address<input name="tailcat_address" type="password" placeholder="tc…" required autocomplete="off" spellcheck="false"></label>
+<div class="row"><label>SSH username<input name="username" placeholder="deploy" required autocomplete="off" spellcheck="false"></label><label class="port">Port<input name="port" type="number" value="22" min="1" max="65535" required></label></div>
+<label>SSH private key<input name="private_key" type="file" required aria-describedby="key-help"></label>
+<small id="key-help">Used for this request. Never saved by this app.</small>
+<label>Key passphrase <span class="muted">(if encrypted)</span><input name="passphrase" type="password" autocomplete="off"></label>
+<label>SSH host fingerprint <span class="muted">(Ed25519)</span><input name="host_key_sha256" placeholder="SHA256:…" required spellcheck="false"></label>
+<details><summary>Where do I find this?</summary><p>On the target machine, run:</p><code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256</code><p>Copy the SHA256 fingerprint. It confirms you reached the expected SSH server.</p></details>
+<label>Command<textarea name="command" rows="2" required spellcheck="false" placeholder="uname -a && uptime"></textarea></label>
+<div class="actions"><button id="run" type="submit">Run command <span>↗</span></button><button id="stop" type="button" class="secondary" disabled>Stop</button></div>
+<p class="privacy">Your credentials pass through this Worker to establish SSH. They are kept in memory for the request; no login, database, or browser storage.</p>
+</form>
+<section class="terminal"><div class="terminal-head"><span>02 / OUTPUT</span><span id="status">Ready</span></div><pre id="output" aria-live="polite"><span class="muted">$ Waiting for a command.
+
+stdout, stderr, and the exit status appear here.</span></pre><div class="terminal-foot"><span>Tailcat → SSH</span><span id="metrics">Relay transport · Wasm</span></div></section>
+</div>
+<section class="curl-section"><div><span class="eyebrow">WORKS FROM YOUR TERMINAL</span><h2>Just curl it.</h2><p>Supply your own credentials with every request.<br>Use the JSON stream when you need the exit code.</p></div><pre><code id="curl-example"></code></pre></section>
+</main>
+<footer>Independent prototype built with Tailcat. <span>Cloudflare Workers · No container</span></footer>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

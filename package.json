@@ -1,0 +1,20 @@
+{
+  "name": "tailcat-tcp-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && cd worker && wrangler dev",
+    "test": "node --test worker/test/*.test.mjs",
+    "deploy": "npm run build && cd worker && wrangler deploy",
+    "check": "cd worker && wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "miniflare": "^5.20260915.0-alpha",
+    "wrangler": "^4.132.0"
+  },
+  "engines": {
+    "node": ">=22.15.0"
+  }
+}

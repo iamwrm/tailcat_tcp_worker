@@ -1,0 +1,15 @@
+node_modules/
+.wrangler/
+worker/test/.tmp/
+worker/src/generated/
+worker/public/transport.mjs
+worker/public/transport-client.mjs
+worker/public/shell.py
+worker/public/transport-protocol.txt
+**/__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+.dev.vars
+.dev.vars.*

@@ -1,0 +1,21 @@
+
+// WaitWriteClosed is the gateway's small build-time addition to gonet.
+// CloseWrite queues FIN asynchronously. The embedding Worker must not destroy
+// the entire network stack until the peer acknowledges our data and FIN.
+// Call after CloseWrite and after observing EOF on the read side.
+func (c *TCPConn) WaitWriteClosed(ctx context.Context) error {
+    ticker := time.NewTicker(10 * time.Millisecond)
+    defer ticker.Stop()
+    for {
+        switch tcp.EndpointState(c.ep.State()) {
+        case tcp.StateClose, tcp.StateTimeWait:
+            return nil
+        case tcp.StateError:
+            return errors.New("TCP connection reset while draining")
+        }
+        select {
+        case <-ctx.Done(): return ctx.Err()
+        case <-ticker.C:
+        }
+    }
+}
