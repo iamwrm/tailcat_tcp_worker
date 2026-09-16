@@ -1,43 +1,74 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer">
-<title>Tailcat / TCP gateway</title>
-<link rel="stylesheet" href="/style.css">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="A TCP gateway for Tailcat on Cloudflare Workers. Connect your own tools to remote services, with no website account.">
+  <title>Tailcat TCP</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
 <body>
-<header><a href="/" class="brand"><span class="mark">↗</span> tailcat<span class="muted"> / worker</span></a><span class="badge">EXPERIMENTAL</span></header>
-<main>
-<div class="intro"><span class="eyebrow">YOUR KEY. YOUR MACHINE.</span><h1>Your tools. Your connection.</h1><p>Use native SSH or your own TCP client through Tailcat.<br>No website account needed.</p></div>
-<section class="curl-section"><div><span class="eyebrow">NATIVE SSH · ANY TCP CLIENT</span><h2>Bring your own tool.</h2><p>Download the <a href="/transport.mjs" download>local adapter</a> and <a href="/transport-client.mjs" download>client SDK</a> into the same folder. Requires Node.js 22.15+.</p><p>Native SSH keeps your SSH private key on your machine. Supply the Tailcat address and connect with your usual SSH client.</p><p><a href="/transport-protocol.txt">Custom client protocol</a> · One active connection per Worker isolate.</p></div><pre><code>export TAILCAT_ADDR='tc…'
-ssh -o "ProxyCommand=node $PWD/transport.mjs stdio --port 22" user@host
+  <header>
+    <a class="brand" href="/">Tailcat TCP</a>
+    <nav aria-label="Main navigation">
+      <a href="https://github.com/iamwrm/tailcat_tcp_worker/blob/main/client/README.md">Client guide</a>
+      <a href="https://github.com/iamwrm/tailcat_tcp_worker">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="intro-title">
+      <h1 id="intro-title">A gateway for your TCP tools.</h1>
+      <p>Connect a local client to a remote service through Tailcat and Cloudflare Workers. HTTP, databases, SSH, or your own protocol.</p>
+      <p class="secondary">You provide the Tailcat address. Your client handles the application and its credentials. No website account needed.</p>
+      <div class="connection" aria-label="Connection path">
+        <span>Your client</span><span aria-hidden="true">→</span><span>This gateway</span><span aria-hidden="true">→</span><span>Tailcat service</span>
+      </div>
+    </section>
 
-# Or expose a service on a local port:
-node transport.mjs forward --listen 127.0.0.1:8080 --port 80
-# Then use your existing client:
-curl http://127.0.0.1:8080/</code></pre></section>
-<p>The form below runs SSH inside the Worker and requires an SSH key upload. It can hit the current Free plan CPU limit (error 1102); use native SSH above for the tested command path.</p>
-<div class="workspace">
-<form id="command-form" autocomplete="off">
-<div class="section-label"><span>01 / CONNECTION</span><span>No account needed</span></div>
-<label>Tailcat address<input name="tailcat_address" type="password" placeholder="tc…" required autocomplete="off" spellcheck="false"></label>
-<div class="row"><label>SSH username<input name="username" placeholder="deploy" required autocomplete="off" spellcheck="false"></label><label class="port">Port<input name="port" type="number" value="22" min="1" max="65535" required></label></div>
-<label>SSH private key<input name="private_key" type="file" required aria-describedby="key-help"></label>
-<small id="key-help">Used for this request. Never saved by this app.</small>
-<label>Key passphrase <span class="muted">(if encrypted)</span><input name="passphrase" type="password" autocomplete="off"></label>
-<label>SSH host fingerprint <span class="muted">(Ed25519)</span><input name="host_key_sha256" placeholder="SHA256:…" required spellcheck="false"></label>
-<details><summary>Where do I find this?</summary><p>On the target machine, run:</p><code>ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256</code><p>Copy the SHA256 fingerprint. It confirms you reached the expected SSH server.</p></details>
-<label>Command<textarea name="command" rows="2" required spellcheck="false" placeholder="uname -a && uptime"></textarea></label>
-<div class="actions"><button id="run" type="submit">Run command <span>↗</span></button><button id="stop" type="button" class="secondary" disabled>Stop</button></div>
-<p class="privacy">Your credentials pass through this Worker to establish SSH. They are kept in memory for the request; no login, database, or browser storage.</p>
-</form>
-<section class="terminal"><div class="terminal-head"><span>02 / OUTPUT</span><span id="status">Ready</span></div><pre id="output" aria-live="polite"><span class="muted">$ Waiting for a command.
+    <section aria-labelledby="start-title">
+      <div class="section-heading"><h2 id="start-title">Try a connection</h2><span>Node.js 22.15+</span></div>
+      <p>This example connects curl to an HTTP service on the remote machine’s port 80.</p>
+      <ol class="steps">
+        <li>
+          <h3>Expose the remote service</h3>
+          <p>On the machine running your HTTP service, install <a href="https://github.com/tailscale/tailcat">Tailcat</a> and run:</p>
+          <pre tabindex="0" aria-label="Remote machine command"><code>tailcat serve 80</code></pre>
+          <p>Keep it running. Use its Tailcat address in the next step.</p>
+        </li>
+        <li>
+          <h3>Start the local adapter</h3>
+          <p>Download both files into the same folder, then start forwarding:</p>
+          <pre tabindex="0" aria-label="Local terminal commands"><code>curl -fsSO https://tailcat-ssh-worker.iamwrm.workers.dev/transport.mjs
+curl -fsSO https://tailcat-ssh-worker.iamwrm.workers.dev/transport-client.mjs
+export TAILCAT_ADDR='tc…'
+node transport.mjs forward --listen 127.0.0.1:8080 --port 80</code></pre>
+        </li>
+        <li>
+          <h3>Use your usual client</h3>
+          <p>In another local terminal:</p>
+          <pre tabindex="0" aria-label="HTTP client command"><code>curl http://127.0.0.1:8080/</code></pre>
+          <p>For another TCP service, change the exposed and destination ports, then use its client.</p>
+        </li>
+      </ol>
+    </section>
 
-stdout, stderr, and the exit status appear here.</span></pre><div class="terminal-foot"><span>Tailcat → SSH</span><span id="metrics">Relay transport · Wasm</span></div></section>
-</div>
-<section class="curl-section"><div><span class="eyebrow">WORKS FROM YOUR TERMINAL</span><h2>Just curl it.</h2><p>Supply your own credentials with every request.<br>Use the JSON stream when you need the exit code.</p></div><pre><code id="curl-example"></code></pre></section>
-</main>
-<footer>Independent prototype built with Tailcat. <span>Cloudflare Workers · No container</span></footer>
-<script type="module" src="/app.js"></script>
+    <section aria-labelledby="tools-title">
+      <h2 id="tools-title">Choose your client</h2>
+      <dl class="clients">
+        <div><dt>HTTP &amp; databases</dt><dd>Forward a local port and connect with curl, a database client, or another TCP tool.</dd></div>
+        <div><dt>SSH &amp; file transfers</dt><dd>Use native SSH or the <a href="https://github.com/iamwrm/tailcat_tcp_worker/blob/main/client/README.md">Node client</a> for commands, interactive shells, and SFTP copies. The Node client also works with rsync; rsync must be installed at both ends. SSH keys stay local.</dd></div>
+        <div><dt>Your own application</dt><dd>Build on the <a href="/transport-client.mjs" download>TCP SDK</a> or implement the <a href="/transport-protocol.txt">WebSocket protocol</a>. Add or change client tools without redeploying the gateway.</dd></div>
+      </dl>
+    </section>
+
+    <aside class="note" aria-label="Service limits">
+      <p>An experimental gateway for light use. Each WebSocket carries one TCP connection. The current Free plan can interrupt long or large transfers. Use SSH or TLS when you need encryption between your client and the service.</p>
+    </aside>
+  </main>
+  <footer>
+    <span>Built with <a href="https://github.com/tailscale/tailcat">Tailcat</a> · Cloudflare Workers</span>
+    <a href="/ssh.html">Legacy SSH form</a>
+  </footer>
 </body>
 </html>

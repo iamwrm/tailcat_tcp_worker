@@ -136,6 +136,8 @@ Cloudflare Worker → Tailcat / WireGuard over DERP → target TCP service
 
 The sections below describe `/api/exec` and `/api/shell`, where the Worker itself
 performs SSH. Those endpoints still receive caller-provided SSH keys in memory.
+The homepage introduces the general TCP gateway; the original browser form is
+available at [`/ssh.html`](https://tailcat-ssh-worker.iamwrm.workers.dev/ssh.html).
 
 ## Target machine
 
