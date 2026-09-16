@@ -13,7 +13,7 @@ function openRequest(m, env) {
   if (m.client_key !== undefined && (typeof m.client_key !== 'string' || m.client_key.length > 256)) throw new Error('Invalid client key');
   const timeout = m.timeout_seconds ?? 1800;
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 3600) throw new Error('Timeout must be 1–3600 seconds');
-  return { tcp: true, tailcat_address: address, tailcat_client_key: m.client_key,
+  return { tailcat_address: address, tailcat_client_key: m.client_key,
     port, timeout_seconds: timeout, derp_map_url: env.DERP_MAP_URL || 'https://tailcat.dev/derpmap.json', allow_embedded_relay: false };
 }
 

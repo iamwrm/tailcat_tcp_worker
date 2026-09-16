@@ -116,5 +116,5 @@ The portable raw-byte SDK is `transport-client.mjs`. Application code can import
 
 All new functionality is client-side. Installing or updating these tools needs
 no Worker redeployment. Get them from the repository; the existing Worker-hosted
-`transport.mjs`, `transport-client.mjs` and legacy `shell.py` downloads remain as
-before.
+`transport.mjs` and `transport-client.mjs` downloads provide the generic TCP
+adapter and SDK.

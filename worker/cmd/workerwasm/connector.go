@@ -11,7 +11,7 @@ import (
 	"tailscale.com/types/key"
 )
 
-// Both the legacy SSH adapter and raw transport use this connector.
+// Connect the raw TCP transport to a Tailcat service.
 func connectTailcat(ctx context.Context, req *request) (net.Conn, func()) {
 	ci, err := tailcat.ParseAddr(tailcat.Addr(req.Address))
 	if err != nil || ci.ServerPublic.IsZero() || ci.ServerDiscoPublic.IsZero() || ci.PresharedKey.IsZero() {
@@ -35,9 +35,6 @@ func connectTailcat(ctx context.Context, req *request) (net.Conn, func()) {
 		cl.Key = pk
 	}
 	req.ClientKey, req.Address = "", ""
-	if !req.TCP {
-		emit(map[string]any{"type": "status", "stage": "connecting"})
-	}
 	dialCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	conn, err := cl.DialTCPPort(dialCtx, req.Port)
 	cancel()

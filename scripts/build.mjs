@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, statSync, existsSync, cpSync, chmodSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, statSync, existsSync, cpSync, chmodSync, rmSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
@@ -9,7 +9,9 @@ const env = { ...process.env, GOTOOLCHAIN: 'go1.27.1' };
 const go = (...args) => execFileSync('go', args, { cwd: worker, env, encoding: 'utf8' });
 mkdirSync(worker + 'src/generated', { recursive: true });
 writeFileSync(worker + 'public/transport-protocol.txt', readFileSync(root + 'PROTOCOL.md'));
-for (const name of ['transport.mjs', 'transport-client.mjs', 'shell.py']) {
+// Remove the obsolete generated download from pre-TCP-only builds.
+rmSync(worker + 'public/shell.py', { force: true });
+for (const name of ['transport.mjs', 'transport-client.mjs']) {
   cpSync(root + 'client/' + name, worker + 'public/' + name);
 }
 const tags = go('run', root + 'scripts/tags.go').trim();

@@ -7,7 +7,8 @@
   in `GO-LICENSE`. `worker/src/generated/go-runtime.js` is derived from Go 1.27.1's
   `wasm_exec.js`; the build script records the small scoping adaptations.
 - [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto), Go Authors,
-  BSD-3-Clause, including the SSH implementation.
+  BSD-3-Clause. Its SSH implementation is used by the Go test fixture; the Worker
+  itself only forwards TCP.
 - [Tailscale](https://github.com/tailscale/tailscale), Tailscale Inc and contributors,
   BSD-3-Clause, and the networking and cryptography dependencies listed in `worker/go.mod`.
 - [gVisor](https://gvisor.dev/), Google LLC and contributors, Apache-2.0,

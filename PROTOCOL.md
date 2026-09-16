@@ -88,8 +88,8 @@ incomplete stream. Never replay application bytes automatically after a failure.
 
 ## Deployment policy
 
-One active Go/Tailcat runtime per Worker isolate, shared with the legacy SSH
-endpoints. Additional streams reaching that isolate receive `busy`; there is no
+One active Go/Tailcat runtime per Worker isolate. Additional streams reaching
+that isolate receive `busy`; there is no
 queue or connection pooling. This prototype is therefore not suitable for an
 application requiring a reliable pool of concurrent database connections.
 The deployment also limits approximately 20 new requests/minute per client IP
@@ -100,8 +100,7 @@ website login or application authentication. An admission reservation expires af
 
 Live native SSH, HTTP and 256 KiB binary echo tests passed. A 17 MiB stress test
 exceeded the current Free deployment CPU limit; high-throughput operation needs
-more capacity. The legacy HTTP `/api/exec` route also hit that CPU limit. No
-paid-plan change has been made.
+more capacity. No paid-plan change has been made.
 
 ## Trust boundary
 

@@ -13,14 +13,14 @@ npm run check -- --outdir .wrangler/build
 npm test
 ```
 
-The 35 integration cases cover legacy SSH exec and PTY operation, authentication
-and host-key rejection, Unicode, resize and Ctrl+C, deadlines and cleanup, binary
-TCP (17,891,328-byte echo with matching hash), both TCP half-close directions,
-flow-control limits, malformed messages, native OpenSSH, local HTTP forwarding,
-admission reservation while a connection is idle, Node SSH with separate stdout/
-stderr and exit status, binary backpressure, host verification before user
-authentication, PTY resizing, encrypted SSH keys, SFTP file/tree copies and
-cleanup, and Node exec/rsync adapters with no SSH executable on PATH.
+The 19 integration cases cover TCP-only health reporting, rejection of removed
+managed SSH routes, binary TCP (17,891,328-byte echo with matching hash), both
+TCP half-close directions, flow-control limits, malformed messages, deadlines,
+native OpenSSH, local HTTP forwarding, admission reservation during idle
+connections, Node SSH with separate stdout/stderr and exit status, binary
+backpressure, host verification before authentication, PTY resizing and Ctrl+C,
+encrypted keys, SFTP file/tree copies and cleanup, and Node exec/rsync adapters
+with no SSH executable on PATH.
 
 Half-close testing caught a shutdown race: destroying the network stack immediately
 after CloseWrite could discard queued bytes. The build adds the reviewed method
@@ -29,8 +29,8 @@ for TCP acknowledgement. The shared Go module cache remains unchanged.
 
 ## Node-only client live verification
 
-The new client tools were tested through the existing deployed Worker against a
-real Ubuntu OpenSSH server. **The Worker was not redeployed.** Test processes used
+The client tools were previously tested through the generic TCP gateway against a
+real Ubuntu OpenSSH server. Adding those tools needed no Worker redeployment. Test processes used
 a PATH without `ssh` or `scp`; Node and rsync were invoked by absolute path.
 
 - Executed a command, preserved separate stdout/stderr, and returned exit code 7.
@@ -65,14 +65,19 @@ read existing personal SSH keys itself; the Node client reads the key you select
 
 ## Deployment observations
 
+After removing Worker-managed SSH on 2026-09-16, all 19 local tests passed.
+Deployment `4e10429a-6013-4c36-9f36-55801f82388d` passed the live HTTP, native
+SSH, client/server half-close and 262,144-byte binary echo checks. SHA256 matched
+for the echoed bytes. Removed endpoints return 404 for GET, POST and WebSocket
+Upgrade requests; the removed browser form, styles, script and Python download
+also return 404. Health advertises only `tcp-v1`.
+
 Live tests passed for native OpenSSH with host verification and a real remote PTY,
-HTTP, both half-close directions, a 256 KiB binary echo, and the legacy curl shell
-with resizing, Ctrl+C and 35 seconds idle followed by more input. Temporary SSH
+HTTP, both half-close directions, and a 256 KiB binary echo. Temporary SSH
 authorizations used for the real-host test were removed afterward.
 
-A sustained 17 MiB transfer exceeded the Free deployment's CPU limit. A legacy
-HTTP `/api/exec` check also returned Cloudflare error 1102 (CPU limit). These routes
-pass locally, but local success does not establish production CPU capacity.
+A sustained 17 MiB transfer exceeded the Free deployment's CPU limit. The same
+transfer passes locally, but local success does not establish production CPU capacity.
 Native SSH and the Node SSH client over `/v1/transport` are live-tested command paths. This is a light-use
 prototype, with one active runtime per Worker isolate, not a throughput or
 concurrency guarantee. No paid-plan change was made.
