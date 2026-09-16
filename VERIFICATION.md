@@ -13,7 +13,8 @@ npm run check -- --outdir .wrangler/build
 npm test
 ```
 
-The 19 integration cases cover TCP-only health reporting, rejection of removed
+The 31 tests cover batching and cancellation boundaries, SDK credit ownership,
+SSH exit delivery within one parser turn, TCP-only health reporting, rejection of removed
 managed SSH routes, binary TCP (17,891,328-byte echo with matching hash), both
 TCP half-close directions, flow-control limits, malformed messages, deadlines,
 native OpenSSH, local HTTP forwarding, admission reservation during idle
@@ -83,3 +84,42 @@ prototype, with one active runtime per Worker isolate, not a throughput or
 concurrency guarantee. No paid-plan change was made.
 
 See the live smoke scripts in `scripts/` and protocol details in `PROTOCOL.md`.
+
+## TCP batching and bridge optimization
+
+Local comparison on 2026-09-17 (macOS, 12 warm trials per workload; `ps` CPU
+accounting for the whole workerd process, not production Worker CPU):
+
+| Workload / metric | Before | After |
+| --- | ---: | ---: |
+| 256 KiB echo: mean process CPU | 125.0 ms | 101.7 ms |
+| 256 KiB echo: median completion | 95.5 ms | 77.5 ms |
+| 256 KiB echo: median output frames | 69 | 18 |
+| 256 KiB echo: median upload credit messages | 16 | 8 |
+| 256 KiB echo: median download credit messages | 69 | 14 |
+| Small HTTP: mean process CPU | 38.3 ms | 40.0 ms |
+| One-byte echo: median round trip | 0.456 ms | 0.433 ms |
+
+The bulk workload used about 19% less local process CPU in this comparison;
+small-request CPU did not improve. An earlier pair measured about 12% lower
+bulk CPU. These measurements have normal run-to-run variation and do not establish
+a new Cloudflare P50. See the saved [benchmark results](worker/test/benchmarks/tcp-batching.json)
+and `scripts/bench-transport.mjs` to reproduce the workloads.
+
+Frame coalescing preserves the v1 frame/credit limits. Tiny replies bypass the
+batching timer, and FIN flushes buffered bytes first. Ready Wasm reads/writes
+avoid Promise callbacks; fixed data buffers are reused. Credit messages batch
+consumed bytes only, and output stall timers update their deadline without
+being recreated on each acknowledgement.
+
+All 31 local tests pass, including a 17 MiB transfer with matching SHA256, both
+half-close directions, stalled consumers, malformed credit, cancelled operations,
+SSH host verification, interactive PTY resizing/Ctrl+C, SFTP and rsync adapters.
+The Node SSH adapter now attaches channel listeners synchronously, preventing
+lost exit events when several SSH packets arrive in one coalesced TCP chunk.
+Update the local Node client along with the SDK to get that fix and ACK batching.
+
+Deployment `a21bbd54-685e-46f0-8ba5-3cc0ec9de44d` passed live HTTP,
+both TCP half-close checks, native SSH, Node SSH (separate output and exit 7),
+and a 256 KiB binary echo with matching SHA256. The updated SDK and protocol
+assets were verified byte-for-byte against the deployed downloads.

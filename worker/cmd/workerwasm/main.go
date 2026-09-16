@@ -64,6 +64,10 @@ func main() {
 // Promise callbacks only deliver a result. Blocking I/O happens in Go goroutines,
 // never inside the JavaScript callback (which would stall the event loop).
 func awaitJS(p js.Value) (js.Value, error) {
+	// Ready reads and writes avoid allocating a channel and two JS callbacks.
+	if p.IsNull() || p.Type() != js.TypeObject || p.Get("then").Type() != js.TypeFunction {
+		return p, nil
+	}
 	type result struct {
 		value js.Value
 		err   error

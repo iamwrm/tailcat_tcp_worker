@@ -205,6 +205,22 @@ python3 scripts/live-node-ssh-smoke.py
 This harness uses no local SSH executable for client operations. It needs rsync
 locally and remotely, and creates/removes its own temporary remote directory.
 
+### Local performance comparison
+
+After building and running the dry-run bundle step above, run:
+
+```sh
+node scripts/bench-transport.mjs
+# Optional saved baseline bundle and client:
+node scripts/bench-transport.mjs /path/to/baseline-bundle /path/to/baseline-client.mjs
+```
+
+This POSIX harness uses `ps` to measure local workerd process CPU, including all
+runtime threads. It warms up first, runs 12 HTTP and 12 random 256 KiB echo
+transfers, verifies their contents, counts frames/credit updates, and measures
+100 one-byte round trips. `BENCH_ROUNDS` changes the sample count. It is a local
+comparison, not a prediction of Cloudflare's billed CPU or production P50.
+
 ## Design and limits
 
 - `/v1/transport` opens one TCP connection per WebSocket. `/api/health` reports
@@ -247,7 +263,8 @@ in `worker/go.mod`, `worker/go.sum` and root `package-lock.json`.
 - `worker/cmd/workerwasm/connector.go`: Tailcat connection setup.
 - `worker/cmd/workerwasm/transport.go`: binary TCP bridge and graceful shutdown.
 - `worker/src/index.js`: transport routing, origin checks and connection limits.
-- `worker/src/transport.js`: WebSocket protocol and bidirectional flow control.
+- `worker/src/transport.js`: WebSocket protocol and runtime lifecycle.
+- `worker/src/bridge.js`: bounded frame/credit batching and synchronous Wasm bridge paths.
 - `worker/src/runtime.js`: isolated runtime cleanup and admission.
 - `client/transport-client.mjs`, `client/transport.mjs`: SDK and local TCP adapter.
 - `client/ssh.mjs`, `client/ssh-client.mjs`, `client/sftp.mjs`: client-side SSH,

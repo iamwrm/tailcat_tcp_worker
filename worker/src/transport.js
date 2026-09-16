@@ -2,7 +2,7 @@ import wasm from './generated/tailcat.wasm';
 import { makeGo } from './generated/go-runtime.js';
 import { runtimeScope, acquireRuntime } from './runtime.js';
 
-const WINDOW = 65536, FRAME = 16384;
+import { createBridge } from './bridge.js';
 function openRequest(m, env) {
   const only = (o, keys) => o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).every(k => keys.includes(k));
   if (!only(m, ['type','version','target','client_key','timeout_seconds']) || m.type !== 'open' || m.version !== 1) throw new Error('Expected a version 1 open message');
@@ -21,60 +21,33 @@ export function transportWebSocket(request, env, ctx) {
   const pair = new WebSocketPair(), client = pair[0], ws = pair[1];
   ws.binaryType = 'arraybuffer';
   ws.accept();
-  let state = 'opening', ended = false, stopped = false, inputFin = false;
-  let uploadCredit = WINDOW, outstanding = 0, queued = [], readWait, creditWait;
-  let runtime, release, lifetime, stallTimer;
+  let state = 'opening', ended = false;
+  let runtime, release, lifetime;
   const aborter = new AbortController();
   const send = value => { if (!ended) ws.send(JSON.stringify(value)); };
-  const stopIO = () => {
-    if (stopped) return;
-    stopped = true; queued = [];
-    readWait?.reject(new Error('Transport stopped')); readWait = null;
-    creditWait?.reject(new Error('Transport stopped')); creditWait = null;
-  };
   const finish = (code = 1000) => {
     if (ended) return;
-    ended = true; clearTimeout(openTimer); clearTimeout(lifetime); clearTimeout(stallTimer);
-    stopIO(); aborter.abort();
+    ended = true; clearTimeout(openTimer); clearTimeout(lifetime);
+    bridge.stop(); aborter.abort();
     try { ws.close(code, code === 1000 ? 'Transport closed' : 'Transport failed'); } catch {}
   };
   const fail = (code, message) => { send({ type: 'error', code, message }); finish(1008); };
   const openTimer = setTimeout(() => fail('open_timeout', 'Send open within 10 seconds'), 10000);
-  function watchCredit() {
-    clearTimeout(stallTimer);
-    if (outstanding) stallTimer = setTimeout(() => fail('consumer_timeout', 'No output credit received for 30 seconds'), 30000);
-  }
+  const bridge = createBridge({ sendControl: send, sendData: bytes => ws.send(bytes), onError: fail });
   async function run(input) {
     try {
       runtime = runtimeScope({ signal: aborter.signal }, input, json => {
         const event = JSON.parse(json);
         if (event.type === 'metrics') return;
         if (event.type === 'opened') state = 'open';
+        if (event.type === 'fin' || event.type === 'closed') bridge.flush();
         send(event);
         if (event.type === 'error') finish(1011);
       });
-      runtime.scope.transportRead = () => {
-        if (stopped) return Promise.reject(new Error('Transport stopped'));
-        if (queued.length) return Promise.resolve(queued.shift());
-        if (inputFin) return Promise.resolve(null);
-        return new Promise((resolve, reject) => { readWait = { resolve, reject }; });
-      };
-      runtime.scope.transportConsumed = n => {
-        if (stopped) return;
-        uploadCredit += n;
-        send({ type: 'window_update', bytes: n });
-      };
-      runtime.scope.transportWrite = async bytes => {
-        while (!stopped && outstanding + bytes.byteLength > WINDOW) {
-          await new Promise((resolve, reject) => { creditWait = { resolve, reject }; });
-        }
-        if (stopped) throw new Error('Transport stopped');
-        outstanding += bytes.byteLength;
-        ws.send(bytes);
-        // Start a timer only on the first byte; sending more cannot postpone it.
-        if (!stallTimer) watchCredit();
-      };
-      runtime.scope.transportStop = stopIO;
+      runtime.scope.transportRead = bridge.read;
+      runtime.scope.transportConsumed = bridge.consumed;
+      runtime.scope.transportWrite = bridge.write;
+      runtime.scope.transportStop = bridge.stop;
       const go = makeGo(runtime.scope);
       go.env = { GOMEMLIMIT: '80MiB', GOGC: '50' };
       if (env.TEST_DERP_HTTP === '1') go.env.TS_DEBUG_USE_DERP_HTTP = 'true';
@@ -88,12 +61,8 @@ export function transportWebSocket(request, env, ctx) {
     if (ended) return;
     try {
       if (typeof event.data !== 'string') {
-        if (state !== 'open' || inputFin || !(event.data instanceof ArrayBuffer)) throw new Error('Unexpected binary data');
-        const bytes = new Uint8Array(event.data);
-        if (!bytes.byteLength || bytes.byteLength > FRAME || bytes.byteLength > uploadCredit) throw new Error('Input exceeds frame or flow-control limit');
-        uploadCredit -= bytes.byteLength;
-        if (readWait) { const waiter = readWait; readWait = null; waiter.resolve(bytes); }
-        else queued.push(bytes);
+        if (state !== 'open' || !(event.data instanceof ArrayBuffer)) throw new Error('Unexpected binary data');
+        bridge.receive(new Uint8Array(event.data));
         return;
       }
       if (event.data.length > 8192) throw new Error('Control message too large');
@@ -110,14 +79,9 @@ export function transportWebSocket(request, env, ctx) {
       if (!m || typeof m !== 'object' || Array.isArray(m)) throw new Error('Invalid control message');
       if (m.type === 'reset') { finish(); return; }
       if (state !== 'open') throw new Error('Wait for opened');
-      if (m.type === 'window_update') {
-        if (!Number.isInteger(m.bytes) || m.bytes <= 0 || m.bytes > outstanding) throw new Error('Invalid output credit');
-        outstanding -= m.bytes; clearTimeout(stallTimer); stallTimer = null; watchCredit();
-        creditWait?.resolve(); creditWait = null;
-      } else if (m.type === 'fin' && !inputFin) {
-        inputFin = true;
-        if (readWait) { const waiter = readWait; readWait = null; waiter.resolve(null); }
-      } else throw new Error('Unknown or duplicate control message');
+      if (m.type === 'window_update') bridge.acknowledge(m.bytes);
+      else if (m.type === 'fin') bridge.endInput();
+      else throw new Error('Unknown control message');
     } catch (e) { fail('protocol_error', e instanceof SyntaxError ? 'Invalid JSON' : e.message); }
   });
   ws.addEventListener('close', () => finish());

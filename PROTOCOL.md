@@ -55,11 +55,20 @@ when the caller advances its async iterator past the previous chunk. Consumers
 must finish processing a chunk before advancing. Await each SDK write; concurrent
 writes are rejected. Only one reader is supported per SDK connection.
 
+Credit updates may combine multiple consumed chunks. The Worker and SDK flush
+at 32 KiB or on a 1 ms timer; the SDK still never acknowledges a chunk held by
+its caller. The Worker coalesces output into frames up to 16 KiB. Partial frames
+use a 1 ms flush timer, while replies of 256 bytes or less bypass that timer when
+there is no buffered output. FIN always flushes pending bytes first. Timers may
+run later if the event loop is busy. These are implementation choices, not new
+protocol requirements; clients must not depend on message boundaries.
+
 A nonreading client is disconnected if outstanding output receives no credit for
 30 seconds. The protocol has no total byte cap, but all streams remain subject to
 session lifetime, provider resource limits and relay limits. A single connection
 retains at most one 64 KiB upload credit window plus bounded TCP/relay buffers;
-output retains a 64 KiB unacknowledged window plus one Go read chunk.
+output reserves a 64 KiB credit window across sent and buffered bytes, plus one
+Go read chunk waiting for credit. Fixed 16 KiB buffers are reused by the bridge.
 
 ## Closing
 

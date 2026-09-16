@@ -11,15 +11,28 @@ export async function openTcp({ url = 'https://tailcat-ssh-worker.iamwrm.workers
   const ws = new WebSocket(endpoint);
   ws.binaryType = 'arraybuffer';
   let opened = false, ended = false, failed, remoteFin = false, localFin = false, busy = false;
-  let sendCredit = 0, outstanding = 0, received = 0, previous = 0;
+  let sendCredit = 0, outstanding = 0, received = 0, previous = 0, pendingCredit = 0, creditTimer;
   let queue = [], readWait, writeWait, resolveOpen, rejectOpen, resolveClosed, rejectClosed;
   const ready = new Promise((resolve, reject) => { resolveOpen = resolve; rejectOpen = reject; });
   const closed = new Promise((resolve, reject) => { resolveClosed = resolve; rejectClosed = reject; });
   // Users can observe closed without an unhandled rejection during setup.
   closed.catch(() => {});
   const control = value => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(value)); };
+  function flushCredit() {
+    clearTimeout(creditTimer); creditTimer = undefined;
+    if (ended || !pendingCredit) return;
+    const bytes = pendingCredit; pendingCredit = 0; received -= bytes;
+    control({ type: 'window_update', bytes });
+  }
+  function acknowledge(bytes) {
+    pendingCredit += bytes;
+    if (pendingCredit >= 32768 || remoteFin) flushCredit();
+    else if (creditTimer === undefined) creditTimer = setTimeout(() => {
+      try { flushCredit(); } catch (e) { fail(e); }
+    }, 1);
+  }
   const wake = () => { readWait?.(); readWait = null; writeWait?.(); writeWait = null; };
-  function cleanup() { clearTimeout(openTimer); signal?.removeEventListener('abort', abort); }
+  function cleanup() { clearTimeout(creditTimer); clearTimeout(openTimer); signal?.removeEventListener('abort', abort); }
   function fail(error) {
     if (ended) return;
     failed = error; ended = true; queue = []; cleanup();
@@ -86,7 +99,7 @@ export async function openTcp({ url = 'https://tailcat-ssh-worker.iamwrm.workers
     async *[Symbol.asyncIterator]() {
       try {
         while (true) {
-          if (previous) { received -= previous; control({ type: 'window_update', bytes: previous }); previous = 0; }
+          if (previous) { acknowledge(previous); previous = 0; }
           while (!queue.length && !remoteFin && !ended) await new Promise(resolve => { readWait = resolve; });
           if (failed) throw failed;
           if (!queue.length) return;

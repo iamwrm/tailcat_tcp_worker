@@ -83,41 +83,44 @@ export async function connectSSH(options) {
 // Channel output is piped with Node backpressure, and only a real SSH exit status
 // counts as completion. stdout remains byte-clean for rsync and other protocols.
 export async function runCommand(session, command, { input = process.stdin, output = process.stdout, errorOutput = process.stderr, shell, onChannel } = {}) {
-  const stream = await new Promise((resolve, reject) => {
-    const callback = (error, channel) => error ? reject(error) : resolve(channel);
+  return new Promise((resolve, reject) => {
+    // Attach listeners inside ssh2's callback: a single TCP chunk can contain
+    // channel success, output and exit status. Awaiting the channel first loses
+    // events emitted while ssh2 parses the rest of that same chunk.
+    const callback = (error, stream) => {
+      if (error) { reject(error); return; }
+      let exitCode, finished = false, releaseChannel;
+      const cleanup = () => {
+        input?.unpipe(stream); input?.pause();
+        stream.unpipe(output); stream.stderr.unpipe(errorOutput);
+        session.client.off('close', disconnected);
+        input?.off('error', fail); output.off('error', fail); errorOutput.off('error', fail);
+        releaseChannel?.();
+      };
+      const finish = (error, code) => {
+        if (finished) return;
+        finished = true; cleanup();
+        if (error) reject(error); else resolve(code);
+      };
+      const fail = error => finish(error);
+      const disconnected = () => finish(session.error || new Error('SSH disconnected without a command result'));
+      stream.on('exit', (code, signal) => {
+        if (Number.isInteger(code)) exitCode = code;
+        else if (signal) exitCode = 128 + (constants.signals['SIG' + signal] || 0);
+      });
+      stream.on('error', fail); stream.stderr.on('error', fail);
+      stream.on('close', () => {
+        if (exitCode === undefined) finish(new Error('SSH command ended without an exit status'));
+        else finish(null, exitCode);
+      });
+      session.client.once('close', disconnected);
+      input?.on('error', fail); output.on('error', fail); errorOutput.on('error', fail);
+      stream.pipe(output, { end: false }); stream.stderr.pipe(errorOutput, { end: false });
+      try { releaseChannel = onChannel?.(stream); }
+      catch (error) { fail(error); return; }
+      if (input) input.pipe(stream); else if (!shell) stream.end();
+    };
     if (shell) session.client.shell(shell, callback);
     else session.client.exec(command, callback);
-  });
-  return new Promise((resolve, reject) => {
-    let exitCode, finished = false, releaseChannel;
-    const cleanup = () => {
-      input?.unpipe(stream); input?.pause();
-      stream.unpipe(output); stream.stderr.unpipe(errorOutput);
-      session.client.off('close', disconnected);
-      input?.off('error', fail); output.off('error', fail); errorOutput.off('error', fail);
-      releaseChannel?.();
-    };
-    const finish = (error, code) => {
-      if (finished) return;
-      finished = true; cleanup();
-      if (error) reject(error); else resolve(code);
-    };
-    const fail = error => finish(error);
-    const disconnected = () => finish(session.error || new Error('SSH disconnected without a command result'));
-    stream.on('exit', (code, signal) => {
-      if (Number.isInteger(code)) exitCode = code;
-      else if (signal) exitCode = 128 + (constants.signals['SIG' + signal] || 0);
-    });
-    stream.on('error', fail); stream.stderr.on('error', fail);
-    stream.on('close', () => {
-      if (exitCode === undefined) finish(new Error('SSH command ended without an exit status'));
-      else finish(null, exitCode);
-    });
-    session.client.once('close', disconnected);
-    input?.on('error', fail); output.on('error', fail); errorOutput.on('error', fail);
-    stream.pipe(output, { end: false }); stream.stderr.pipe(errorOutput, { end: false });
-    try { releaseChannel = onChannel?.(stream); }
-    catch (error) { fail(error); return; }
-    if (input) input.pipe(stream); else if (!shell) stream.end();
   });
 }

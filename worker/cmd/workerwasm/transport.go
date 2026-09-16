@@ -21,12 +21,17 @@ func runTCP(ctx context.Context, req *request) {
 		failure("half_close_unavailable", "Connector does not support TCP half-close")
 		return
 	}
-	unblock := func() { js.Global().Get("transportStop").Invoke() }
+	read := js.Global().Get("transportRead")
+	consumed := js.Global().Get("transportConsumed")
+	write := js.Global().Get("transportWrite")
+	stopIO := js.Global().Get("transportStop")
+	unblock := func() { stopIO.Invoke() }
 	stop := context.AfterFunc(ctx, unblock)
 	defer stop()
 	emit(map[string]any{"type": "opened", "version": 1, "window": 65536, "max_frame": 16384})
 	done := make(chan error, 1)
 	go func() {
+		buf := make([]byte, 16384)
 		var inputErr error
 		defer func() {
 			if inputErr != nil {
@@ -36,7 +41,7 @@ func runTCP(ctx context.Context, req *request) {
 			done <- inputErr
 		}()
 		for {
-			frame, err := awaitJS(js.Global().Get("transportRead").Invoke())
+			frame, err := awaitJS(read.Invoke())
 			if err != nil {
 				inputErr = err
 				return
@@ -45,7 +50,7 @@ func runTCP(ctx context.Context, req *request) {
 				inputErr = closeWrite.CloseWrite()
 				return
 			}
-			data := make([]byte, frame.Get("byteLength").Int())
+			data := buf[:frame.Get("byteLength").Int()]
 			js.CopyBytesToGo(data, frame)
 			for len(data) > 0 {
 				n, err := conn.Write(data)
@@ -57,19 +62,19 @@ func runTCP(ctx context.Context, req *request) {
 					inputErr = io.ErrShortWrite
 					return
 				}
-				js.Global().Get("transportConsumed").Invoke(n)
+				consumed.Invoke(n)
 				data = data[n:]
 			}
 		}
 	}()
 	buf := make([]byte, 16384)
+	data := js.Global().Get("Uint8Array").New(len(buf))
 	var outputErr error
 	for {
 		n, err := conn.Read(buf)
 		if n > 0 {
-			data := js.Global().Get("Uint8Array").New(n)
 			js.CopyBytesToJS(data, buf[:n])
-			if _, e := awaitJS(js.Global().Get("transportWrite").Invoke(data)); e != nil {
+			if _, e := awaitJS(write.Invoke(data, n)); e != nil {
 				outputErr = e
 				break
 			}

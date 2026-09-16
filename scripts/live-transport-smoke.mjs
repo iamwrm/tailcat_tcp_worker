@@ -6,6 +6,8 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { openTcp } from '../client/transport-client.mjs';
+import { connectSSH, runCommand } from '../client/ssh-client.mjs';
+import { Writable } from 'node:stream';
 const url=process.argv[2]||'https://tailcat-ssh-worker.iamwrm.workers.dev';
 const root=fileURLToPath(new URL('../worker/',import.meta.url));
 mkdirSync(root+'test/.tmp',{recursive:true});
@@ -46,6 +48,17 @@ try {
   let out='',err='';child.stdout.on('data',b=>out+=b);child.stderr.on('data',b=>err+=b);
   const code=await new Promise(resolve=>child.on('close',resolve));assert.equal(code,7,err);assert.equal(out,'hello from SSH through Tailcat\n');assert.match(err,/stderr is separate/);
   report.checks.native_ssh={exit_code:code,host_key_verified:true,ssh_private_key_local:true};await pause();
+ }
+ {
+  console.error('Testing deployed Node SSH with coalesced output');
+  const ssh=await connectSSH({url,address:credentials.tailcat_address,port:22,username:credentials.username,privateKey:credentials.private_key,hostKey:credentials.host_key_sha256,timeout:60});
+  let out='',err='';
+  const output=new Writable({write(b,e,cb){out+=b;cb()}}),errorOutput=new Writable({write(b,e,cb){err+=b;cb()}});
+  try {
+   const code=await runCommand(ssh,'probe',{input:null,output,errorOutput});
+   assert.equal(code,7);assert.equal(out,'hello from SSH through Tailcat\n');assert.equal(err,'stderr is separate\n');
+   report.checks.node_ssh={exit_code:code,separate_output:true};
+  } finally {ssh.close();await pause();}
  }
  {
   console.error('Testing deployed binary echo');const started=Date.now(),t=await open(7001),expected=createHash('sha256'),actual=createHash('sha256');let bytes=0;
