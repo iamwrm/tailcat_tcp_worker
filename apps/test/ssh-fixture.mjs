@@ -8,8 +8,11 @@ import { fingerprint } from '../ssh-client.mjs';
 
 export async function startSSHFixture(parent) {
   const directory = await fs.mkdtemp(path.join(parent, 'sftp-'));
-  const host = ssh2.utils.generateKeyPairSync('ed25519');
-  const user = ssh2.utils.generateKeyPairSync('ed25519', { passphrase: 'test passphrase', cipher: 'aes256-cbc' });
+  // ssh2 1.17.0's Ed25519 generator strips leading zero public-key bytes,
+  // producing malformed keys about 1/256 of the time. Use P-256 here; the Go
+  // transport fixture still covers Ed25519 authentication and host keys.
+  const host = ssh2.utils.generateKeyPairSync('ecdsa', { bits: 256 });
+  const user = ssh2.utils.generateKeyPairSync('ecdsa', { bits: 256, passphrase: 'test passphrase', cipher: 'aes256-cbc' });
   const publicKey = ssh2.utils.parseKey(user.public), clients = new Set();
   const stats = { authentications: 0 };
   const resolvePath = name => {
