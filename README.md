@@ -1,11 +1,21 @@
 # Tailcat TCP gateway on Cloudflare Workers
 
-A Worker-only TCP gateway with client-provided tools. The stable transport opens
+A TCP gateway with client-provided tools and an optional local WASM client. The stable transport opens
 Tailcat connections and forwards raw bytes; SSH, HTTP and other application
 protocols run in your local client. New client tools do not require redeploying
 the Worker. The Worker exposes only the generic TCP transport and a health check.
 
 **Live:** https://tailcat-ssh-worker.iamwrm.workers.dev
+
+## Local WASM client for restricted sandboxes
+
+[wasm_client/](wasm_client/README.md) runs Tailcat's WebAssembly build locally in
+Node.js and connects directly to DERP, bypassing the Worker. No native Tailcat,
+OpenSSH, Go installation, root, or Linux netlink is needed to run it. Prebuilt
+artifacts are included. It provides a generic TCP SDK and the existing SSH/SFTP
+adapter, with credentials read from uploaded files and mandatory host verification.
+Direct outbound relay access must be allowed by the sandbox. Start with the
+[agent test prompt](wasm_client/AGENT_PROMPT.md).
 
 ## Node SSH, file copies and rsync
 

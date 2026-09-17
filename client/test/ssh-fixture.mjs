@@ -65,5 +65,7 @@ export async function startSSHFixture(parent) {
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   return { directory, stats, port: server.address().port, privateKey: user.private, passphrase: 'test passphrase', username: 'node-test', hostKey: fingerprint(ssh2.utils.parseKey(host.private).getPublicSSH()),
-    async close() { for (const c of clients) c.destroy(); await new Promise(resolve => server.close(resolve)); await fs.rm(directory, { recursive: true, force: true }); } };
+    // ssh2 server-side Client has end(), not destroy(). Close its test socket
+    // as well so unfinished handshakes cannot hold fixture cleanup open.
+    async close() { for (const c of clients) { c.end(); c._sock.destroy(); } await new Promise(resolve => server.close(resolve)); await fs.rm(directory, { recursive: true, force: true }); } };
 }

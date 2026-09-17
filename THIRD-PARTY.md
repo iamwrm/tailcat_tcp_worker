@@ -6,6 +6,8 @@
 - [Go](https://go.dev/), copyright The Go Authors, BSD-style license reproduced
   in `GO-LICENSE`. `worker/src/generated/go-runtime.js` is derived from Go 1.27.1's
   `wasm_exec.js`; the build script records the small scoping adaptations.
+  The same runtime and compiled transport are distributed in `wasm_client/dist/`;
+  the root license files also apply to those prebuilt artifacts.
 - [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto), Go Authors,
   BSD-3-Clause. Its SSH implementation is used by the Go test fixture; the Worker
   itself only forwards TCP.

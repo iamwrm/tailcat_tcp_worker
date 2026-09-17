@@ -38,7 +38,7 @@ export function fingerprint(key) {
   return 'SHA256:' + createHash('sha256').update(key).digest('base64').replace(/=+$/, '');
 }
 
-export async function connectSSH(options) {
+export async function connectSSH(options, { openTcp: connect = openTcp } = {}) {
   const { username, hostKey, keyFile, privateKey, passphrase, signal } = options;
   if (!username || typeof username !== 'string' || /[\x00-\x1f\x7f]/.test(username)) throw new Error('Supply an SSH username');
   if (!/^SHA256:[A-Za-z0-9+/]{43}$/.test(hostKey || '')) throw new Error('Supply a trusted SHA256 SSH host fingerprint');
@@ -48,7 +48,7 @@ export async function connectSSH(options) {
   // Parse before contacting the gateway, including encrypted-key validation.
   const parsed = ssh2.utils.parseKey(key, passphrase);
   if (parsed instanceof Error) throw new Error('Cannot read SSH private key; encrypted keys require a passphrase');
-  const tcp = await openTcp({ ...options, port: options.port ?? 22 });
+  const tcp = await connect({ ...options, port: options.port ?? 22 });
   const socket = new TransportSocket(tcp), client = new ssh2.Client();
   let mismatch = false, lastError, closing = false;
   const closed = new Promise(resolve => client.once('close', resolve));

@@ -83,8 +83,8 @@ async function promptPassphrase() {
   } finally { process.off('SIGTERM', terminate); reader.close(); process.stdin.pause(); process.stderr.write('\n'); }
 }
 
-export async function main(argv = process.argv.slice(2)) {
-  const { mode, options, args, recursive, askPassphrase } = parseArguments(argv);
+export async function main(argv = process.argv.slice(2), { openTcp, env = process.env } = {}) {
+  const { mode, options, args, recursive, askPassphrase } = parseArguments(argv, env);
   if (mode === 'help') { process.stdout.write(help); return 0; }
   if (!options.address) throw new Error('Set TAILCAT_ADDR');
   if (askPassphrase) options.passphrase = await promptPassphrase();
@@ -94,7 +94,7 @@ export async function main(argv = process.argv.slice(2)) {
   const terminate = () => { signalCode = 143; aborter.abort(); };
   process.on('SIGINT', interrupt); process.on('SIGTERM', terminate);
   try {
-    session = await connectSSH({ ...options, signal: aborter.signal });
+    session = await connectSSH({ ...options, signal: aborter.signal }, { openTcp });
     if (['exec','rsh'].includes(mode)) {
       // Match OpenSSH's remote-shell convention: rsync already quotes its remote
       // command arguments. Quoting each argument again would corrupt filenames.

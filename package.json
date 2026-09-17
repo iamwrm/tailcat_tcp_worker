@@ -7,6 +7,8 @@
     "build": "node scripts/build.mjs",
     "dev": "npm run build && cd worker && wrangler dev",
     "test": "node --test worker/test/*.test.mjs",
+    "build:wasm-client": "node wasm_client/build.mjs",
+    "test:wasm-client": "node --test wasm_client/test/*.test.mjs",
     "deploy": "npm run build && cd worker && wrangler deploy",
     "check": "cd worker && wrangler deploy --dry-run"
   },
