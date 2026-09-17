@@ -4,6 +4,7 @@ Run these from the repository root. Node.js 22.15+ is required. The application 
 
 ```sh
 npm ci --omit=dev
+npm run download
 export TAILCAT_ADDR='tc…'
 export SSH_USER='your-user'
 export SSH_KEY="$HOME/.ssh/id_ed25519"

@@ -27,6 +27,7 @@ Requires Node.js **22.15+** and npm. From the repository root:
 
 ```sh
 npm ci --omit=dev
+npm run download
 node transport/verify.mjs
 node apps/ssh.mjs exec \
   --credentials-dir /private/extracted-credentials \
@@ -126,11 +127,16 @@ error. For SDK callers, `onDiagnostic(event)` receives the same trace.
 
 ## Packaged artifacts and development
 
-`dist/tailcat.wasm.gz` (about 6 MiB) and `dist/go-runtime.js` are checked in, with
-compressed/uncompressed SHA256 hashes in `dist/manifest.json`. Runtime checks
-detect accidental corruption; the manifest itself is trusted repository content,
-not an independent signature. Rebuilds use `transport/go/cmd/tailcatwasm`, the pinned
-Go 1.27.1 toolchain and module graph, and the reviewed TCP shutdown patch.
+`dist/tailcat.wasm.gz` (about 6 MiB) is a versioned GitHub release asset, not Git
+content. Run `npm run download` once after installing dependencies; it honors
+proxy/CA settings, verifies compressed and uncompressed SHA256 hashes from the
+committed `dist/manifest.json`, and atomically installs the file locally. A valid
+local artifact is reused without network access. Startup never downloads code.
+The matching `dist/go-runtime.js` remains checked in. The manifest is trusted
+repository content, not an independent signature. For offline setup, copy the
+release asset to `transport/dist/tailcat.wasm.gz` and run `npm run check`.
+Rebuilds use `transport/go/cmd/tailcatwasm`, the pinned Go 1.27.1 toolchain and
+module graph, and the reviewed TCP shutdown patch.
 The build applies two exact-match upstream deadline replacements using a Go
 overlay over private dependency copies. The module cache stays unchanged;
 the packaged manifest records the local deadlines. See
@@ -147,3 +153,13 @@ Building and integration tests require Go. Ordinary use does not. The Node
 adapter uses a browser-like Go runtime scope so Go uses Fetch and WebSocket
 networking even when hosted by Node on Linux. It never invokes a native Tailcat
 binary. See [validation](VALIDATION.md) and [the agent prompt](../prompts/02-web-agent-wasm-ssh.md).
+
+### Publishing a new WASM release
+
+Build and test with the pinned toolchain. Publish `transport/dist/tailcat.wasm.gz`
+as an asset on a new versioned GitHub release (never replace an existing version).
+Commit the matching `dist/manifest.json` and `dist/go-runtime.js`, and update the
+pinned URL in `transport/download.mjs` in the same change. Do not commit the gzip.
+Verify a clean checkout with `npm ci`, `npm run download`, `npm run check`, and
+`npm test` before publishing the code update. Keep old release assets available
+for older checkouts.

@@ -23,11 +23,11 @@ jobs:
       matrix:
         include:
           - node: '22'
-            artifact: packaged
+            artifact: release
           - node: '24'
             artifact: rebuilt
           - node: '26'
-            artifact: packaged
+            artifact: release
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,7 +45,9 @@ jobs:
           cache-dependency-path: transport/go/go.sum
       - name: Install Node dependencies
         run: npm ci --omit=dev --no-audit --no-fund
-      - name: Verify packaged WASM checksums
+      - name: Download pinned WASM release
+        run: npm run download
+      - name: Verify release WASM checksums
         run: npm run check
       - name: Download Go dependencies
         working-directory: transport/go

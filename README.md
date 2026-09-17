@@ -19,6 +19,7 @@ directory as `tailcat-address.txt`, `id_ed25519`, and `ssh-host-key.pub`.
 
 ```sh
 npm ci --omit=dev
+npm run download
 npm run check
 node apps/ssh.mjs exec \
   --credentials-dir /private/credentials \
@@ -53,11 +54,13 @@ npm test
 npm run check
 ```
 
-Builds and integration tests require Go; normal use runs the checked-in WASM
-artifact. The build pins Go 1.27.1 and all dependencies.
+Builds and integration tests require Go; normal use downloads the pinned WASM
+release once with `npm run download`. The download verifies the committed SHA256
+manifest and is cached locally; runtime startup never downloads code.
+The build pins Go 1.27.1 and all dependencies.
 
 GitHub Actions runs on pushes to `main`, pull requests, and manual dispatch.
-It checks the packaged WASM on Node 22 and 26, rebuilds and tests it on Node 24,
+It downloads and checks the release WASM on Node 22 and 26, rebuilds and tests it on Node 24,
 and runs the full suite using local DERP/TCP/SSH fixtures. CI needs no SSH
 credentials or live server access.
 

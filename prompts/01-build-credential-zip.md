@@ -28,8 +28,8 @@ Ask for the hostname or username if either is missing.
    into ssh-host-key.pub. Confirm Tailcat exposes the requested SSH port.
    If the service or address is missing, report it; do not create a service.
 
-5. Clone the repository or update to main. Run npm ci --omit=dev and
-   npm run check. Replace PRIVATE_DIR, USERNAME, and PORT, quoting values:
+5. Clone the repository or update to main. Run npm ci --omit=dev,
+   npm run download, and npm run check. Replace PRIVATE_DIR, USERNAME, and PORT, quoting values:
    node apps/ssh.mjs exec --credentials-dir PRIVATE_DIR \
      --user USERNAME --port PORT --timeout 60 -- 'hostname; id'
    Keep SSH host-key and TLS checks enabled. Stop the process after 75 seconds.

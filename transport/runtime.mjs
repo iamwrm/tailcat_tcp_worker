@@ -92,7 +92,7 @@ try {
   const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
   await go.run(instance);
 } catch {
-  fail('runtime_failed', 'Could not load or run Tailcat WASM; verify the packaged artifacts and Node version');
+  fail('runtime_failed', 'Could not load or run Tailcat WASM; run npm run download and npm run check, and verify the Node version');
 } finally {
   bridge.stop(); aborter.abort(); runtime?.dispose(); await network?.close(); parentPort.close();
 }

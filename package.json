@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "download": "node transport/download.mjs",
     "build": "node transport/build.mjs",
     "test": "node --test apps/test/*.test.mjs transport/test/*.test.mjs",
     "check": "node transport/verify.mjs"

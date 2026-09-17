@@ -7,3 +7,5 @@ node_modules/
 .dev.vars
 .dev.vars.*
 transport/.build/
+transport/dist/tailcat.wasm.gz
+transport/dist/.download-*/

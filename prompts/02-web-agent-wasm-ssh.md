@@ -13,8 +13,8 @@ Connect through the ZIP's Tailcat address. The hostname names the target;
 the SSH host key verifies it. The CLI has no --host option.
 
 1. Clone the repository or update to main. Use Node.js 22.15+.
-   Run npm ci --omit=dev and npm run check from the repository root.
-   Use the included WASM file. No Go build or native ssh/tailcat is needed.
+   Run npm ci --omit=dev, npm run download, and npm run check from the repository root.
+   Use the verified WASM release asset. No Go build or native ssh/tailcat is needed.
 
 2. Require exactly these ZIP entries: id_ed25519, tailcat-address.txt,
    ssh-host-key.pub. Reject extra paths, symlinks, and duplicate entries.
