@@ -50,7 +50,7 @@ node wasm_client/test/live.mjs /private/extracted-credentials wr
 
 This validates that the JavaScript/WASM route avoids the native Linux netlink
 requirement. Outbound HTTPS/WSS access is still required. See the actual
-web-agent validation below and [AGENT_PROMPT.md](AGENT_PROMPT.md).
+web-agent validation below and [the web-agent prompt](../prompts/02-web-agent-wasm-ssh.md).
 
 ## Slow proxy startup regression
 

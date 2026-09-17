@@ -146,4 +146,4 @@ npm run check
 Building and integration tests require Go. Ordinary use does not. The Node
 adapter uses a browser-like Go runtime scope so Go uses Fetch and WebSocket
 networking even when hosted by Node on Linux. It never invokes a native Tailcat
-binary. See [validation](VALIDATION.md) and [the agent prompt](AGENT_PROMPT.md).
+binary. See [validation](VALIDATION.md) and [the agent prompt](../prompts/02-web-agent-wasm-ssh.md).

@@ -38,7 +38,7 @@ installed locally and remotely. Other applications can use the local TCP SDK.
 
 - [Usage, configuration, and generic TCP SDK](wasm_client/README.md)
 - [SSH/SFTP and rsync details](client/README.md)
-- [Prompt for a web agent with an uploaded credential ZIP](wasm_client/AGENT_PROMPT.md)
+- [Credential ZIP setup and web-agent SSH prompts](prompts/README.md)
 - [Validation results](wasm_client/VALIDATION.md)
 - [Local transport contract](PROTOCOL.md)
 
@@ -57,6 +57,7 @@ artifact. The build pins Go 1.27.1 and all dependencies.
 - `wasm_client/`: CLI, TCP SDK, runtime, packaged WASM, Go source, and tests.
 - `client/`: local SSH/SFTP application adapter and CLI implementation.
 - `scripts/`: Go build tags and the TCP shutdown patch.
+- `prompts/`: credential setup and web-agent SSH instructions.
 
 The Cloudflare implementation and deployment tooling have been removed. This
 repository has one runtime path: local WASM. Its GitHub repository name remains
