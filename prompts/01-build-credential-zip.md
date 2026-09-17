@@ -1,50 +1,46 @@
-# Build the credential ZIP
+# Create the ZIP
 
-Provide your hostname and SSH username, then paste this into an agent with
-trusted SSH access. This prompt authorizes adding one dedicated public key.
+Fill in the hostname and username. Give this prompt to an agent that already
+has SSH access to the server.
 
 ```text
-Create a private credential ZIP for local Tailcat WASM SSH.
+Create a ZIP for Tailcat WASM SSH.
 Hostname or SSH alias: <HOSTNAME>
 SSH username: <USERNAME>
-SSH destination port: <PORT, default 22>
+SSH port: <PORT, default 22>
 Repository: https://github.com/iamwrm/tailcat_wasm
-Ask me for any missing hostname or username; never guess or use placeholders.
+Ask for the hostname or username if either is missing.
 
-1. Connect to my hostname as my supplied username using existing trusted
-   SSH access. Keep host verification enabled. If the server is not already
-   trusted, ask me for a trusted host key; do not trust ssh-keyscan alone.
+1. Connect to the server as this user. Verify its SSH host key. If no
+   trusted key is available, ask me for one. ssh-keyscan alone is not proof.
 
-2. Create a private staging directory (700) outside the repository.
-   Generate a fresh Ed25519 key named id_ed25519, without a passphrase,
-   for unattended use, with a unique key comment. Never reuse, replace,
-   or print an existing private key.
+2. Create a temporary directory outside the repository with mode 700.
+   Generate a new Ed25519 key named id_ed25519, without a passphrase.
+   Give it a unique comment. Keep the private key local and mode 600.
 
-3. Append the new public key to the supplied user's authorized_keys file.
-   Preserve existing entries/options, avoid duplicates, and use correct
-   ownership and permissions (.ssh 700, authorized_keys 600). Do not change
-   sshd configuration, other accounts, or other access settings.
+3. Add the public key to this user's authorized_keys. Preserve existing
+   entries and options. Avoid duplicates. Check ownership and permissions:
+   .ssh 700, authorized_keys 600. Leave sshd and other accounts unchanged.
 
-4. Locate this host's existing Tailcat service and its short address file;
-   ask me for the file location if it cannot be identified. Read it privately
-   into tailcat-address.txt. Obtain the active SSH server's host public key
-   over the trusted connection and save it as ssh-host-key.pub.
-   Confirm Tailcat exposes my requested SSH port. If the service or address
-   is unavailable, report the prerequisite instead of creating a new service.
+4. Find the existing Tailcat service and short address file. Ask for the
+   file path if needed. Copy the address into tailcat-address.txt.
+   Copy the SSH server's host public key through the verified SSH connection
+   into ssh-host-key.pub. Confirm Tailcat exposes the requested SSH port.
+   If the service or address is missing, report it; do not create a service.
 
-5. Clone/update the repository; run npm ci --omit=dev and npm run check.
-   Substitute my username, port, and staging path safely in this command:
+5. Clone the repository or update to main. Run npm ci --omit=dev and
+   npm run check. Replace PRIVATE_DIR, USERNAME, and PORT, quoting values:
    node apps/ssh.mjs exec --credentials-dir PRIVATE_DIR \
      --user USERNAME --port PORT --timeout 60 -- 'hostname; id'
-   Keep host-key/TLS verification enabled; enforce a 75-second outer timeout.
+   Keep SSH host-key and TLS checks enabled. Stop the process after 75 seconds.
 
-6. After success, create a mode-600 ZIP outside the repository in my private
-   output directory; do not overwrite an existing ZIP. Include exactly these
-   root entries: id_ed25519, tailcat-address.txt, ssh-host-key.pub.
-   Verify names/contents without printing secrets, then remove staging copies.
+6. If the test passes, create a mode-600 ZIP outside the repository.
+   Do not overwrite an existing ZIP. Include only these files at its root:
+   id_ed25519, tailcat-address.txt, ssh-host-key.pub.
+   Check the ZIP contents, then delete the temporary credential copies.
 
-7. Report the ZIP path, supplied hostname/username/port, actual remote
-   hostname, sanitized test result, and new key comment/public fingerprint
-   for later revocation. Never commit or publicly upload the ZIP or secrets.
-   The ZIP contains unencrypted credentials; I will upload it privately.
+7. Report the ZIP path, hostname, username, port, test output, and the new
+   key's comment and public fingerprint. Report the server's actual hostname.
+   Remove secrets from output. Never print, commit, or publicly upload the
+   private key, Tailcat address, or ZIP. I will upload the ZIP privately.
 ```
