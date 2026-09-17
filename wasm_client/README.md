@@ -30,7 +30,7 @@ npm ci --omit=dev
 node wasm_client/verify.mjs
 node wasm_client/ssh.mjs exec \
   --credentials-dir /private/extracted-credentials \
-  --user wr --timeout 30 -- 'hostname; id; uname -a'
+  --user wr --timeout 60 -- 'hostname; id; uname -a'
 ```
 
 The directory must contain `id_ed25519`, `tailcat-address.txt`, and
@@ -76,7 +76,9 @@ for directory trees. `rsh` is available as an rsync transport; rsync still needs
 to be installed locally and remotely. See [the shared client documentation](../client/README.md).
 `exec` returns the remote exit code; setup or transport failures return 255.
 `--timeout` limits the entire transport lifetime, including startup (1–3600
-seconds, default 1800). SIGINT/SIGTERM cancel it and stop the WASM worker thread.
+seconds, default 1800). Local startup permits 30 seconds for relay setup and
+the Tailcat ping, 40 seconds for TCP dialing, and 45 seconds overall. A shorter
+`--timeout` still takes precedence. SIGINT/SIGTERM cancel it and stop the WASM worker thread.
 
 ## Generic TCP SDK
 
@@ -129,7 +131,10 @@ error. For SDK callers, `onDiagnostic(event)` receives the same trace.
 compressed/uncompressed SHA256 hashes in `dist/manifest.json`. Runtime checks
 detect accidental corruption; the manifest itself is trusted repository content,
 not an independent signature. Rebuilds reuse `worker/cmd/workerwasm`, the pinned
-Go 1.27.1 toolchain and module graph, and the reviewed TCP shutdown patch. See
+Go 1.27.1 toolchain and module graph, and the reviewed TCP shutdown patch.
+The local build applies three exact-match deadline replacements using a Go
+overlay over private dependency copies. It leaves the module cache and Worker
+build unchanged; the packaged manifest records the local deadlines. See
 [third-party notices](../THIRD-PARTY.md) for licenses.
 
 ```sh

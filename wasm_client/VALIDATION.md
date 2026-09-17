@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-- `npm run test:wasm-client`: **15 passed** on Node 26/macOS ARM64.
+- `npm run test:wasm-client`: **17 passed** on Node 26/macOS ARM64.
 - `npm test`: **31 existing Worker/client tests passed**.
 - `node wasm_client/verify.mjs`: packaged gzip, WASM and Go runtime hashes match.
 
@@ -53,3 +53,12 @@ This validates that the JavaScript/WASM route avoids the native Linux netlink
 requirement. The user's web agent still needs a separate test: its outbound
 HTTPS/WSS policy may block DERP even though it allowed the Cloudflare Worker.
 Use [AGENT_PROMPT.md](AGENT_PROMPT.md) with the existing private ZIP.
+
+## Slow proxy startup regression
+
+The web-agent sandbox opened its relay WebSocket in about 10 seconds, while
+the original Go relay and Tailcat ping deadlines were also 10 seconds. A local
+HTTP CONNECT fixture delayed relay startup by 11 seconds: the old artifact
+failed, and the client-only deadline overlay passed in 11.307 seconds. The
+full 17-test WASM suite passed after rebuilding. Session cancellation and
+shorter caller deadlines remain enforced.

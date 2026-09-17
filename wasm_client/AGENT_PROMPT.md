@@ -9,7 +9,7 @@ The uploaded ZIP contains id_ed25519, tailcat-address.txt,
 and ssh-host-key.pub. SSH username: wr. Destination port: 22.
 
 1. Clone the repository. Use Node.js 22.15 or newer.
-   If already cloned, update to the latest main (do not stay on d5e3331).
+   If already cloned, update to the latest main (including the slow-proxy startup fix).
    From the repository root, run:
    npm ci --omit=dev
    node wasm_client/verify.mjs
@@ -21,9 +21,9 @@ and ssh-host-key.pub. SSH username: wr. Destination port: 22.
 3. Run this command, replacing only the credential directory path:
    node wasm_client/ssh.mjs exec \
      --credentials-dir /private/extracted-credentials \
-     --user wr --port 22 --timeout 30 -- 'hostname; id; uname -a'
+     --user wr --port 22 --timeout 60 -- 'hostname; id; uname -a'
 
-4. Enforce a 45-second external timeout. Keep host verification enabled.
+4. Enforce a 75-second external timeout. Keep host verification enabled.
    Use the bundled relay map and existing proxy/CA environment settings.
    Do not install native Tailcat, change sandbox permissions, or use
    the Worker as a fallback: this test must use local WASM and DERP.

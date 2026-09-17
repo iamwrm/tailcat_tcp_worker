@@ -35,7 +35,7 @@ export async function openTcp({ address, port, clientKey, timeout = 1800, signal
   };
   const abort = () => fail(new Error('Transport aborted'));
   const deadline = setTimeout(() => fail(new Error('Transport session timed out')), timeout * 1000);
-  const openTimer = setTimeout(() => fail(new Error('Tailcat open timed out; check DERP access and target availability')), 30000);
+  const openTimer = setTimeout(() => fail(new Error('Tailcat open timed out; check DERP access and target availability')), 45000);
   signal?.addEventListener('abort', abort, { once: true });
   worker.on('error', () => fail(new Error('Local WASM worker failed')));
   worker.on('exit', () => { if (!ended) fail(new Error('Local WASM runtime stopped before TCP closed')); });

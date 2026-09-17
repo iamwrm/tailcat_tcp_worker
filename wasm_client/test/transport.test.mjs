@@ -135,7 +135,7 @@ test('invalid credentials and insecure relay map are rejected without a network 
   await assert.rejects(tcp(0), /TCP port/);
   await assert.rejects(tcp(22, { derpMapURL: 'http://example.com/map', allowLocalRelayForTests: false }), /HTTPS/);
 });
-test('HTTPS_PROXY/HTTP_PROXY tunnel both map fetch and DERP WebSocket', async () => {
+async function proxyTransportTest(delay = 0) {
   const proxy = createServer(), sockets = new Set(); let tunnels = 0;
   proxy.on('connect', (request, client, head) => {
     const destination = new URL('http://' + request.url);
@@ -147,9 +147,15 @@ test('HTTPS_PROXY/HTTP_PROXY tunnel both map fetch and DERP WebSocket', async ()
     client.on('close', () => sockets.delete(client)); target.on('close', () => sockets.delete(target));
     client.on('error', () => target.destroy()); target.on('error', () => client.destroy());
     target.once('connect', () => {
-      client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-      if (head.length) target.write(head);
-      client.pipe(target); target.pipe(client);
+      const finish = () => {
+        if (client.destroyed || target.destroyed) return;
+        client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+        if (head.length) target.write(head);
+        client.pipe(target); target.pipe(client);
+      };
+      // The first CONNECT loads the map; delay the subsequent relay tunnel.
+      if (delay && tunnels > 1) { const timer = setTimeout(finish, delay); client.once('close', () => clearTimeout(timer)); }
+      else finish();
     });
   });
   proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
@@ -167,4 +173,6 @@ test('HTTPS_PROXY/HTTP_PROXY tunnel both map fetch and DERP WebSocket', async ()
     for (const socket of sockets) socket.destroy();
     await new Promise(resolve => proxy.close(resolve));
   }
-});
+}
+test('HTTPS_PROXY/HTTP_PROXY tunnel both map fetch and DERP WebSocket', () => proxyTransportTest());
+test('relay startup tolerates an 11-second proxy CONNECT delay', { timeout: 35000 }, () => proxyTransportTest(11000));
