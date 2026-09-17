@@ -11,9 +11,15 @@ Node application (SSH, SFTP, or another TCP protocol)
   → WebSocket to DERP → remote Tailcat → target TCP service
 ```
 
-The sandbox must allow outbound HTTPS to `tailcat.dev` for the relay map and
-WSS to the selected DERP server. Success through a Cloudflare gateway does not
+The public relay map is bundled, so startup does **not** fetch `tailcat.dev`.
+The sandbox must allow WSS to the selected DERP server. Success through a Cloudflare gateway does not
 guarantee direct relay access. There is **no automatic Worker fallback**.
+
+HTTPS and relay WebSockets honor `HTTPS_PROXY`, `HTTP_PROXY`, and `NO_PROXY`
+(and their lowercase forms), using Undici's `EnvHttpProxyAgent`. Proxy
+credentials are never printed. TLS verification stays enabled; a sandbox with
+an intercepting proxy must supply its trusted CA through its normal Node setup
+(for example `NODE_EXTRA_CA_CERTS` set before Node starts).
 
 ## Run with uploaded credentials
 
@@ -99,6 +105,16 @@ await tcp.closed;
 An optional HTTPS `derpMapURL` selects a different relay map. Plain HTTP relays
 are enabled only with the explicit SDK `allowLocalRelayForTests` flag and a
 loopback map URL; the CLI does not expose this test mode.
+
+The bundled [derpmap.json](derpmap.json) is a public snapshot retrieved from
+`https://tailcat.dev/derpmap.json` on 2026-09-17 (regions 301–304), with no user
+credentials. Relay topology can change: `--live-relay-map` opts into fetching
+the latest map, or `--derp-map-file FILE` supplies a newer trusted snapshot.
+The SDK equivalents are `liveRelayMap: true` and `derpMapFile`.
+
+Errors identify the map-fetch or relay-WebSocket stage and, when available,
+a safe error code such as `ECONNREFUSED`, `ENOTFOUND`, or
+`SELF_SIGNED_CERT_IN_CHAIN`. They do not expose raw errors or proxy URLs.
 
 ## Packaged artifacts and development
 

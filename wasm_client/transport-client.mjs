@@ -3,7 +3,7 @@ import { Worker } from 'node:worker_threads';
 // Same application-facing contract as client/transport-client.mjs, with a
 // local WASM instance instead of a remote Cloudflare gateway. One reader/writer.
 export async function openTcp({ address, port, clientKey, timeout = 1800, signal,
-  derpMapURL = 'https://tailcat.dev/derpmap.json', allowLocalRelayForTests = false }) {
+  derpMapURL = 'https://tailcat.dev/derpmap.json', derpMapFile, liveRelayMap = false, allowLocalRelayForTests = false }) {
   if (typeof address !== 'string' || address.length > 4096 || !/^tc[A-Za-z0-9_-]+$/.test(address)) throw new Error('Supply a valid Tailcat address');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Supply a TCP port from 1 to 65535');
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 3600) throw new Error('Timeout must be 1–3600 seconds');
@@ -13,7 +13,8 @@ export async function openTcp({ address, port, clientKey, timeout = 1800, signal
   if (signal?.aborted) throw new Error('Transport aborted');
   const worker = new Worker(new URL('./runtime.mjs', import.meta.url), {
     workerData: { input: { tailcat_address: address, tailcat_client_key: clientKey,
-      port, timeout_seconds: timeout, derp_map_url: map.href, allow_embedded_relay: false }, allowLocalRelayForTests },
+      port, timeout_seconds: timeout, derp_map_url: map.href, allow_embedded_relay: false },
+      derpMapFile, liveRelayMap, allowLocalRelayForTests },
     // Do not inherit CLI-only --input-type or expose raw runtime diagnostics.
     execArgv: [], stdout: true, stderr: true,
   });

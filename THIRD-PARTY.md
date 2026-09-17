@@ -20,6 +20,9 @@
 - [ssh2](https://github.com/mscdex/ssh2), Brian White and contributors, MIT,
   pinned in `package-lock.json`. Used only by the Node SSH/SFTP client tools.
   Its copyright and license accompany the installed package.
+- [Undici](https://github.com/nodejs/undici), MIT, pinned in `package-lock.json`.
+  The local WASM client uses its Fetch, WebSocket, and environment-proxy support.
+  Its copyright and license accompany the installed package.
 - Cloudflare's Wrangler, Miniflare, and workerd are used as build/test tools.
 
 The dependency graph and exact versions are recorded in `worker/go.mod`, `worker/go.sum`, and

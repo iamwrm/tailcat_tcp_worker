@@ -9,6 +9,7 @@ The uploaded ZIP contains id_ed25519, tailcat-address.txt,
 and ssh-host-key.pub. SSH username: wr. Destination port: 22.
 
 1. Clone the repository. Use Node.js 22.15 or newer.
+   If already cloned, update to the latest main (do not stay on d5e3331).
    From the repository root, run:
    npm ci --omit=dev
    node wasm_client/verify.mjs
@@ -23,6 +24,7 @@ and ssh-host-key.pub. SSH username: wr. Destination port: 22.
      --user wr --port 22 --timeout 30 -- 'hostname; id; uname -a'
 
 4. Enforce a 45-second external timeout. Keep host verification enabled.
+   Use the bundled relay map and existing proxy/CA environment settings.
    Do not install native Tailcat, change sandbox permissions, or use
    the Worker as a fallback: this test must use local WASM and DERP.
 

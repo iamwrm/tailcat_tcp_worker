@@ -13,6 +13,9 @@ import { credentials } from '../ssh.mjs';
 import { connectSSH, runCommand } from '../../client/ssh-client.mjs';
 import { startSSHFixture } from '../../client/test/ssh-fixture.mjs';
 import { copyFiles } from '../../client/sftp.mjs';
+import { createServer } from 'node:http';
+import { connect } from 'node:net';
+import { once } from 'node:events';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 let fixture, info, dir, sftp;
@@ -127,4 +130,37 @@ test('invalid credentials and insecure relay map are rejected without a network 
   await assert.rejects(openTcp({ address: 'secret-invalid', port: 22 }), /valid Tailcat/);
   await assert.rejects(tcp(0), /TCP port/);
   await assert.rejects(tcp(22, { derpMapURL: 'http://example.com/map', allowLocalRelayForTests: false }), /HTTPS/);
+});
+test('HTTPS_PROXY/HTTP_PROXY tunnel both map fetch and DERP WebSocket', async () => {
+  const proxy = createServer(), sockets = new Set(); let tunnels = 0;
+  proxy.on('connect', (request, client, head) => {
+    const destination = new URL('http://' + request.url);
+    // This test proxy only permits our fixture endpoint.
+    if (destination.host !== new URL(info.map_url).host) { client.destroy(); return; }
+    tunnels++;
+    const target = connect(Number(destination.port), destination.hostname);
+    sockets.add(client); sockets.add(target);
+    client.on('close', () => sockets.delete(client)); target.on('close', () => sockets.delete(target));
+    client.on('error', () => target.destroy()); target.on('error', () => client.destroy());
+    target.once('connect', () => {
+      client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      if (head.length) target.write(head);
+      client.pipe(target); target.pipe(client);
+    });
+  });
+  proxy.listen(0, '127.0.0.1'); await once(proxy, 'listening');
+  const names = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  try {
+    const proxyURL = 'http://127.0.0.1:' + proxy.address().port;
+    for (const name of names) process.env[name] = name.toLowerCase() === 'no_proxy' ? '' : proxyURL;
+    const t = await tcp(80), response = collect(t);
+    await t.write(Buffer.from('GET /hello HTTP/1.1\r\nHost: fixture\r\nConnection: close\r\n\r\n')); t.end();
+    assert.match((await response).toString(), /HTTP through generic TCP/); await t.closed;
+    assert.ok(tunnels >= 2, 'Map fetch and relay WebSocket must both use CONNECT');
+  } finally {
+    for (const name of names) { if (previous[name] === undefined) delete process.env[name]; else process.env[name] = previous[name]; }
+    for (const socket of sockets) socket.destroy();
+    await new Promise(resolve => proxy.close(resolve));
+  }
 });

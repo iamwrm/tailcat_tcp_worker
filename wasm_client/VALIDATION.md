@@ -2,7 +2,7 @@
 
 ## Automated checks
 
-- `npm run test:wasm-client`: **11 passed** on Node 26/macOS ARM64.
+- `npm run test:wasm-client`: **15 passed** on Node 26/macOS ARM64.
 - `npm test`: **31 existing Worker/client tests passed**.
 - `node wasm_client/verify.mjs`: packaged gzip, WASM and Go runtime hashes match.
 
@@ -12,6 +12,10 @@ half-close directions, SSH stdout/stderr and nonzero exit status, rejection of
 an incorrect SSH key, host-key rejection before authentication, SFTP binary
 round-trip with an encrypted key, interactive PTY, cancellation/deadlines,
 concurrent connections, a paused reader, and file-based credential loading.
+The map/proxy follow-up additionally checks loading the bundled map with an
+unreachable HTTPS proxy, an explicit live-map fetch failing through that proxy,
+redaction of proxy credentials/TLS diagnostics, and actual HTTP CONNECT tunnels
+for both the map request and DERP WebSocket to the local integration fixture.
 
 ## Restricted Linux live validation
 
@@ -33,11 +37,12 @@ Credentials were mounted read-only from outside the repository.
 
 | Read-only live check | Result | Elapsed |
 | --- | --- | --- |
-| `hostname; id; uname -a` | n150 responded, exit 0, empty stderr | 5.536 s |
-| Separate stdout/stderr, `exit 7` | Exact output and status 7 | 3.878 s |
-| Incorrect host fingerprint | Rejected, status 255, no command output | 2.408 s |
+| `hostname; id; uname -a` | n150 responded, exit 0, empty stderr | 3.214 s |
+| Separate stdout/stderr, `exit 7` | Exact output and status 7 | 2.807 s |
+| Incorrect host fingerprint | Rejected, status 255, no command output | 1.565 s |
 
-These are individual observations, not performance guarantees. No remote files
+These results use the bundled public map, with no `tailcat.dev` bootstrap fetch.
+They are individual observations, not performance guarantees. No remote files
 or server configuration were changed by these checks. Live SSH is opt-in:
 
 ```sh

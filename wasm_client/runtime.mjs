@@ -6,8 +6,9 @@ import { gunzipSync } from 'node:zlib';
 import { createHash, webcrypto } from 'node:crypto';
 import { createBridge } from '../worker/src/bridge.js';
 import { runtimeScope } from '../worker/src/runtime.js';
+import { createNetwork } from './network.mjs';
 
-let runtime, finished = false, networkFailure;
+let runtime, network, finished = false, networkFailure;
 const aborter = new AbortController();
 const send = message => { if (!finished) parentPort.postMessage(message); };
 function fail(code, message) {
@@ -45,6 +46,10 @@ try {
   const wasm = gunzipSync(packed, { maxOutputLength: 64 * 1024 * 1024 });
   verify(wasm, 'tailcat.wasm');
   const { makeGo } = await import('./dist/go-runtime.js');
+  network = await createNetwork({ mapURL: workerData.input.derp_map_url,
+    mapFile: workerData.derpMapFile, liveRelayMap: workerData.liveRelayMap,
+    onFailure(message) { networkFailure = message; },
+  });
   runtime = runtimeScope({ signal: aborter.signal }, workerData.input, json => {
     const event = JSON.parse(json);
     if (event.type === 'metrics') return;
@@ -71,19 +76,10 @@ try {
   runtime.scope.transportConsumed = bridge.consumed;
   runtime.scope.transportWrite = bridge.write;
   runtime.scope.transportStop = bridge.stop;
-  const fetchRelayMap = runtime.scope.fetch;
-  runtime.scope.fetch = async (...args) => {
-    try { return await fetchRelayMap(...args); }
-    catch { networkFailure = 'Relay map fetch failed; check outbound HTTPS access'; throw new Error(networkFailure); }
-  };
-  const RelaySocket = runtime.scope.WebSocket;
-  runtime.scope.WebSocket = class {
-    constructor(...args) {
-      const ws = new RelaySocket(...args);
-      ws.addEventListener('error', () => { networkFailure = 'DERP WebSocket connection failed; check outbound relay access'; });
-      return ws;
-    }
-  };
+  runtime.scope.fetch = (url, options = {}) => network.fetch(url, {
+    ...options, signal: AbortSignal.any([aborter.signal, options.signal].filter(Boolean)), redirect: 'error',
+  });
+  runtime.scope.WebSocket = network.WebSocket;
   const go = makeGo(runtime.scope);
   go.env = { GOMEMLIMIT: '80MiB', GOGC: '50' };
   if (workerData.allowLocalRelayForTests) go.env.TS_DEBUG_USE_DERP_HTTP = 'true';
@@ -93,5 +89,5 @@ try {
 } catch {
   fail('runtime_failed', 'Could not load or run Tailcat WASM; verify the packaged artifacts and Node version');
 } finally {
-  bridge.stop(); runtime?.dispose(); parentPort.close();
+  bridge.stop(); aborter.abort(); runtime?.dispose(); await network?.close(); parentPort.close();
 }
