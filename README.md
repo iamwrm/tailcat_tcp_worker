@@ -1,5 +1,7 @@
 # Local Tailcat WASM SSH
 
+[![CI](https://github.com/iamwrm/tailcat_wasm/actions/workflows/ci.yml/badge.svg)](https://github.com/iamwrm/tailcat_wasm/actions/workflows/ci.yml)
+
 SSH commands, interactive terminals, and SFTP file transfers through Tailcat,
 running entirely in a local Node.js process. The transport is Go WebAssembly;
 SSH is handled locally by `ssh2`. No native `ssh` or `tailcat` executable,
@@ -53,6 +55,11 @@ npm run check
 
 Builds and integration tests require Go; normal use runs the checked-in WASM
 artifact. The build pins Go 1.27.1 and all dependencies.
+
+GitHub Actions runs on pushes to `main`, pull requests, and manual dispatch.
+It checks the packaged WASM on Node 22 and 26, rebuilds and tests it on Node 24,
+and runs the full suite using local DERP/TCP/SSH fixtures. CI needs no SSH
+credentials or live server access.
 
 - `transport/`: TCP SDK, WASM runtime, Go source, build tooling, and transport tests.
 - `apps/`: SSH entry point, interactive shell, SFTP and rsync adapters, and application tests.

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} / ${{ matrix.artifact }} WASM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: '22'
+            artifact: packaged
+          - node: '24'
+            artifact: rebuilt
+          - node: '26'
+            artifact: packaged
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Set up pinned Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: transport/go/go.mod
+          cache-dependency-path: transport/go/go.sum
+      - name: Install Node dependencies
+        run: npm ci --omit=dev --no-audit --no-fund
+      - name: Verify packaged WASM checksums
+        run: npm run check
+      - name: Download Go dependencies
+        working-directory: transport/go
+        run: go mod download
+      - name: Rebuild WASM from source
+        if: matrix.artifact == 'rebuilt'
+        run: npm run build
+      - name: Verify rebuilt WASM checksums
+        if: matrix.artifact == 'rebuilt'
+        run: npm run check
+      - name: Check SSH entry point
+        run: node apps/ssh.mjs --help
+      - name: Run unit and local integration tests
+        run: npm test
