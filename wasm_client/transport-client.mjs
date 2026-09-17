@@ -1,7 +1,6 @@
 import { Worker } from 'node:worker_threads';
 
-// Same application-facing contract as client/transport-client.mjs, with a
-// local WASM instance instead of a remote Cloudflare gateway. One reader/writer.
+// Generic TCP over a local WASM instance. One reader and one writer per stream.
 export async function openTcp({ address, port, clientKey, timeout = 1800, signal,
   derpMapURL = 'https://tailcat.dev/derpmap.json', derpMapFile, liveRelayMap = false, allowLocalRelayForTests = false, onDiagnostic }) {
   if (typeof address !== 'string' || address.length > 4096 || !/^tc[A-Za-z0-9_-]+$/.test(address)) throw new Error('Supply a valid Tailcat address');

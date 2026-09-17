@@ -14,16 +14,15 @@ const cli = fileURLToPath(new URL('../ssh.mjs', import.meta.url));
 async function run(command, extra = []) {
   const start = performance.now();
   const child = spawn(process.execPath, [cli, 'exec', '--credentials-dir', directory,
-    '--user', username, '--timeout', '30', ...extra, '--', command], {
-    // Even a coincidental installed ssh/tailcat cannot be found; a gateway
-    // environment setting must not cause a fallback to the Worker.
-    env: { ...process.env, PATH: '/no-native-tools', TAILCAT_URL: 'https://must-not-contact.invalid' },
+    '--user', username, '--timeout', '60', ...extra, '--', command], {
+    // Native ssh/tailcat executables cannot be found by the test process.
+    env: { ...process.env, PATH: '/no-native-tools' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let out = '', err = '';
   child.stdout.on('data', bytes => { out += bytes; });
   child.stderr.on('data', bytes => { err += bytes; });
-  const timer = setTimeout(() => child.kill('SIGKILL'), 45000);
+  const timer = setTimeout(() => child.kill('SIGKILL'), 75000);
   const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   clearTimeout(timer);
   return { code, elapsed_ms: Math.round(performance.now() - start), stdout: sanitize(out), stderr: sanitize(err) };
@@ -35,4 +34,4 @@ assert.equal(status.code, 7, status.stderr); assert.equal(status.stdout, 'wasm-s
 const mismatch = await run('hostname', ['--host-key', 'SHA256:' + 'A'.repeat(43)]);
 assert.equal(mismatch.code, 255); assert.equal(mismatch.stdout, ''); assert.match(mismatch.stderr, /host key mismatch/);
 console.log(JSON.stringify({ node: process.version, platform: process.platform, arch: process.arch,
-  native_tools_on_path: false, worker_gateway: false, identity, nonzero_status: status, wrong_host_key: mismatch }, null, 2));
+  native_tools_on_path: false, identity, nonzero_status: status, wrong_host_key: mismatch }, null, 2));

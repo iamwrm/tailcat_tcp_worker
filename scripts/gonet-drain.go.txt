@@ -1,5 +1,5 @@
 
-// WaitWriteClosed is the gateway's small build-time addition to gonet.
+// WaitWriteClosed is the local transport's small build-time addition to gonet.
 // CloseWrite queues FIN asynchronously. The embedding Worker must not destroy
 // the entire network stack until the peer acknowledges our data and FIN.
 // Call after CloseWrite and after observing EOF on the read side.

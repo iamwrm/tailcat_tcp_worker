@@ -35,7 +35,7 @@ func connectTailcat(ctx context.Context, req *request) (net.Conn, func()) {
 		cl.Key = pk
 	}
 	req.ClientKey, req.Address = "", ""
-	dialCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	dialCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
 	conn, err := cl.DialTCPPort(dialCtx, req.Port)
 	cancel()
 	if err != nil {

@@ -4,8 +4,8 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import { createHash, webcrypto } from 'node:crypto';
-import { createBridge } from '../worker/src/bridge.js';
-import { runtimeScope } from '../worker/src/runtime.js';
+import { createBridge } from './src/bridge.js';
+import { runtimeScope } from './src/runtime-scope.js';
 import { createNetwork } from './network.mjs';
 
 let runtime, network, finished = false, networkFailure;

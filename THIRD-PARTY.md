@@ -4,15 +4,14 @@
   BSD-3-Clause. Pinned source: `79dc7eff30d78fbe9a2c69c725eb05c82d0d542d`.
   Its license is reproduced in `TAILCAT-LICENSE`.
 - [Go](https://go.dev/), copyright The Go Authors, BSD-style license reproduced
-  in `GO-LICENSE`. `worker/src/generated/go-runtime.js` is derived from Go 1.27.1's
+  in `GO-LICENSE`. `wasm_client/dist/go-runtime.js` is derived from Go 1.27.1's
   `wasm_exec.js`; the build script records the small scoping adaptations.
   The same runtime and compiled transport are distributed in `wasm_client/dist/`;
   the root license files also apply to those prebuilt artifacts.
 - [golang.org/x/crypto](https://pkg.go.dev/golang.org/x/crypto), Go Authors,
-  BSD-3-Clause. Its SSH implementation is used by the Go test fixture; the Worker
-  itself only forwards TCP.
+  BSD-3-Clause. Its SSH implementation is used by the Go test fixture.
 - [Tailscale](https://github.com/tailscale/tailscale), Tailscale Inc and contributors,
-  BSD-3-Clause, and the networking and cryptography dependencies listed in `worker/go.mod`.
+  BSD-3-Clause, and the networking and cryptography dependencies listed in `wasm_client/go/go.mod`.
 - [gVisor](https://gvisor.dev/), Google LLC and contributors, Apache-2.0,
   license reproduced in `GVISOR-LICENSE`. During the build a private copy of the
   pinned dependency receives the additional method in `scripts/gonet-drain.go.txt`
@@ -23,8 +22,7 @@
 - [Undici](https://github.com/nodejs/undici), MIT, pinned in `package-lock.json`.
   The local WASM client uses its Fetch, WebSocket, and environment-proxy support.
   Its copyright and license accompany the installed package.
-- Cloudflare's Wrangler, Miniflare, and workerd are used as build/test tools.
 
-The dependency graph and exact versions are recorded in `worker/go.mod`, `worker/go.sum`, and
+The dependency graph and exact versions are recorded in `wasm_client/go/go.mod`, `wasm_client/go/go.sum`, and
 `package-lock.json`. This prototype is independent and is not an official Tailscale
-or Cloudflare product.
+product.

@@ -2,11 +2,10 @@
 
 ## Automated checks
 
-- `npm run test:wasm-client`: **17 passed** on Node 26/macOS ARM64.
-- `npm test`: **31 existing Worker/client tests passed**.
+- `npm test`: **27 passed** on Node 26/macOS ARM64.
 - `node wasm_client/verify.mjs`: packaged gzip, WASM and Go runtime hashes match.
 
-The new suite uses real DERP, WireGuard and TCP connections to disposable local
+The suite uses real DERP, WireGuard and TCP connections to disposable local
 fixtures. It covers HTTP, a 17 MiB binary echo with SHA256 equality, both TCP
 half-close directions, SSH stdout/stderr and nonzero exit status, rejection of
 an incorrect SSH key, host-key rejection before authentication, SFTP binary
@@ -31,7 +30,7 @@ container before the WASM tool ran. The profile deliberately isolates this
 restriction; it is not a replica of every web agent's sandbox policy.
 
 No native `ssh` or `tailcat` was installed. The live test additionally launched
-the client with an empty executable search path and an unusable `TAILCAT_URL`.
+the client with an empty executable search path.
 The WASM client connected **directly to public DERP**, without the Worker.
 Credentials were mounted read-only from outside the repository.
 
@@ -85,3 +84,25 @@ The earlier sandbox failure was a startup deadline race: the relay tunnel
 opened around 10 seconds, matching the original 10-second internal deadlines.
 The client-only startup extension resolves the observed failure. This is a
 single end-to-end observation, not a guarantee for all outbound proxy policies.
+
+## Local-only migration and deployment retirement
+
+The Go source, module files, DERP fixture, JavaScript bridge, and bridge tests
+now live under `wasm_client/`. A clean local build and test run no longer need
+Cloudflare tooling or any `worker/` directory. The SSH adapter defaults to the
+local WASM SDK; gateway clients, URL flags, deployment scripts, and website
+assets are removed. Tests retain the SSH exit-status race check and cover
+command/rsync argument parsing alongside the bridge and integration suite.
+
+The rebuilt artifact was tested against n150 on macOS ARM64 with Node 26.8.2
+and no native tools on PATH:
+
+| Read-only check | Result | Elapsed |
+| --- | --- | --- |
+| `hostname; id; uname -a` | `ubuntu-n150-1`, exit 0, empty stderr | 2.706 s |
+| Separate output streams, `exit 7` | Exact stdout/stderr, exit 7 | 2.563 s |
+| Incorrect host fingerprint | Rejected, exit 255, no command output | 1.460 s |
+
+Extracted credentials were removed and the original private ZIP preserved.
+Cloudflare confirmed deletion of `tailcat-ssh-worker`; its former workers.dev
+endpoint returned HTTP 404 afterward. No remote SSH server changes were made.

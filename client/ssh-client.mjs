@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { constants } from 'node:os';
 import ssh2 from 'ssh2';
-import { openTcp } from './transport-client.mjs';
+import { openTcp } from '../wasm_client/transport-client.mjs';
 
 // Adapt the bounded transport to the socket interface used by ssh2. A single
 // reader and the Writable queue serialize reads/writes and preserve backpressure.
@@ -45,7 +45,7 @@ export async function connectSSH(options, { openTcp: connect = openTcp } = {}) {
   if (!keyFile && !privateKey) throw new Error('Supply an SSH private-key file');
   const key = privateKey || await readFile(keyFile);
   if (key.length > 262144) throw new Error('SSH private key exceeds 256 KiB');
-  // Parse before contacting the gateway, including encrypted-key validation.
+  // Parse before opening the local transport, including encrypted-key validation.
   const parsed = ssh2.utils.parseKey(key, passphrase);
   if (parsed instanceof Error) throw new Error('Cannot read SSH private key; encrypted keys require a passphrase');
   const tcp = await connect({ ...options, port: options.port ?? 22 });

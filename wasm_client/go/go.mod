@@ -1,4 +1,4 @@
-module tailcat-worker
+module tailcat-local-wasm
 
 go 1.27.1
 

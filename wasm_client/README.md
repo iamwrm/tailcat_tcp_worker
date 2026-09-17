@@ -1,7 +1,7 @@
 # Local Tailcat WASM client
 
 Run Tailcat's `js/wasm` build inside Node.js, connecting directly to DERP over
-WebSockets. The SSH adapter uses `ssh2` locally. No Cloudflare Worker, native
+WebSockets. The SSH adapter uses `ssh2` locally. No native
 Tailcat, OpenSSH, Go installation, root, TUN device, or Linux netlink is needed
 to run the tool. This is a Node CLI and SDK; a browser UI is not included.
 
@@ -12,8 +12,8 @@ Node application (SSH, SFTP, or another TCP protocol)
 ```
 
 The public relay map is bundled, so startup does **not** fetch `tailcat.dev`.
-The sandbox must allow WSS to the selected DERP server. Success through a Cloudflare gateway does not
-guarantee direct relay access. There is **no automatic Worker fallback**.
+The sandbox must allow WSS to the selected DERP server. All transport and SSH
+processing runs locally.
 
 HTTPS and relay WebSockets honor `HTTPS_PROXY`, `HTTP_PROXY`, and `NO_PROXY`
 (and their lowercase forms), using Undici's `EnvHttpProxyAgent`. Proxy
@@ -57,13 +57,12 @@ node wasm_client/ssh.mjs exec \
 Existing `TAILCAT_ADDR`, `SSH_USER`, `SSH_KEY`, `SSH_HOST_KEY`,
 `SSH_KEY_PASSPHRASE`, and `TAILCAT_CLIENT_KEY` environment values are supported.
 `--client-key-file` supplies an optional Tailcat identity for a server allowlist.
-`TAILCAT_URL` is ignored and `--url` is rejected, so this CLI cannot quietly use
-the old gateway. Short Tailcat addresses with a PSK are required, as for the
-Worker transport; embedded-relay `--full-address` values are not supported.
+Short Tailcat addresses with a PSK are required; embedded-relay
+`--full-address` values are not supported.
 
 ## SSH applications
 
-The shared SSH adapter supports the same commands as `client/ssh.mjs`:
+The SSH adapter supports commands, interactive shells, and file transfers:
 
 ```sh
 node wasm_client/ssh.mjs shell --credentials-dir /private/credentials --user wr
@@ -83,7 +82,7 @@ the Tailcat ping, 40 seconds for TCP dialing, and 45 seconds overall. A shorter
 ## Generic TCP SDK
 
 SSH is one adapter. Import `openTcp` from `wasm_client/transport-client.mjs`
-for other applications. Its contract matches the Worker client: one reader,
+for other applications. Its contract supports one reader,
 sequential awaited writes, bounded 64 KiB windows, 16 KiB frames, TCP half-close,
 cancellation, and a `closed` promise. Each connection has its own WASM thread.
 
@@ -130,18 +129,18 @@ error. For SDK callers, `onDiagnostic(event)` receives the same trace.
 `dist/tailcat.wasm.gz` (about 6 MiB) and `dist/go-runtime.js` are checked in, with
 compressed/uncompressed SHA256 hashes in `dist/manifest.json`. Runtime checks
 detect accidental corruption; the manifest itself is trusted repository content,
-not an independent signature. Rebuilds reuse `worker/cmd/workerwasm`, the pinned
+not an independent signature. Rebuilds use `wasm_client/go/cmd/tailcatwasm`, the pinned
 Go 1.27.1 toolchain and module graph, and the reviewed TCP shutdown patch.
-The local build applies three exact-match deadline replacements using a Go
-overlay over private dependency copies. It leaves the module cache and Worker
-build unchanged; the packaged manifest records the local deadlines. See
+The build applies two exact-match upstream deadline replacements using a Go
+overlay over private dependency copies. The module cache stays unchanged;
+the packaged manifest records the local deadlines. See
 [third-party notices](../THIRD-PARTY.md) for licenses.
 
 ```sh
 npm ci
-npm run build:wasm-client
-npm run test:wasm-client
+npm run build
 npm test
+npm run check
 ```
 
 Building and integration tests require Go. Ordinary use does not. The Node

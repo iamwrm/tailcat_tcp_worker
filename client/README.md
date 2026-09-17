@@ -1,7 +1,6 @@
 # Client tools
 
-Run these from the repository root. Node.js 22.15+ is required. The TCP adapter
-and SDK have no runtime dependencies; the SSH tools use the pinned `ssh2` package:
+Run these from the repository root. Node.js 22.15+ is required. The application adapter uses the pinned `ssh2` package over the local WASM transport:
 
 ```sh
 npm ci --omit=dev
@@ -22,8 +21,8 @@ The target still needs an SSH server; file copies also need its SFTP subsystem.
 These commands do not invoke a local `ssh` executable:
 
 ```sh
-node client/ssh.mjs exec -- 'uname -a && uptime'
-node client/ssh.mjs shell
+node wasm_client/ssh.mjs exec -- 'uname -a && uptime'
+node wasm_client/ssh.mjs shell
 ```
 
 `exec` forwards stdin, stdout and stderr as binary streams and returns the remote
@@ -37,16 +36,15 @@ on normal exits, connection errors and handled termination signals.
 For an encrypted key, add `--ask-passphrase` before `--` or positional arguments.
 The prompt requires a terminal. Noninteractive clients can provide
 `SSH_KEY_PASSPHRASE` in their process environment instead. Passphrases are never
-command-line arguments or transmitted to the Worker.
+command-line arguments.
 
 Options `--user`, `--key` and `--host-key` override the corresponding environment
-variables. `--url`/`TAILCAT_URL` selects another gateway. `--port` defaults to 22;
+variables. `--port` defaults to 22;
 `--timeout` defaults to 1800 seconds, maximum 3600. `TAILCAT_CLIENT_KEY` is optional
 for a Tailcat server that restricts client identities.
 
 The Node client uses explicit credentials and a fingerprint. It does not read
-OpenSSH's `~/.ssh/config`, `known_hosts`, or agent settings. Use the native SSH
-adapter below if you need those OpenSSH features.
+OpenSSH's `~/.ssh/config`, `known_hosts`, or agent settings.
 
 ## File copies without scp
 
@@ -55,10 +53,10 @@ the client. These are file-copy operations, not the legacy SCP wire protocol or 
 complete clone of scp's command-line syntax.
 
 ```sh
-node client/ssh.mjs upload './local file.txt' '/tmp/remote file.txt'
-node client/ssh.mjs download '/tmp/remote file.txt' './downloaded file.txt'
-node client/ssh.mjs upload --recursive ./project /tmp/project-copy
-node client/ssh.mjs download --recursive /tmp/project-copy ./downloaded-project
+node wasm_client/ssh.mjs upload './local file.txt' '/tmp/remote file.txt'
+node wasm_client/ssh.mjs download '/tmp/remote file.txt' './downloaded file.txt'
+node wasm_client/ssh.mjs upload --recursive ./project /tmp/project-copy
+node wasm_client/ssh.mjs download --recursive /tmp/project-copy ./downloaded-project
 ```
 
 Destinations are **exact paths**, including directory copies. Their parent
@@ -83,11 +81,11 @@ still provides synchronization, delta transfer, metadata and its own options.
 
 ```sh
 rsync -rt --stats \
-  -e 'node client/ssh.mjs rsh' \
+  -e 'node wasm_client/ssh.mjs rsh' \
   ./source/ "$SSH_USER@target:/tmp/destination/"
 
 rsync -rt \
-  -e 'node client/ssh.mjs rsh' \
+  -e 'node wasm_client/ssh.mjs rsh' \
   "$SSH_USER@target:/tmp/destination/" ./download/
 ```
 
@@ -95,26 +93,14 @@ rsync -rt \
 it. The adapter accepts rsync's `-l USER` argument and forwards its remote command
 using OpenSSH-compatible argument joining. The command stream never allocates a
 PTY, and stdout contains only remote bytes. Use absolute paths to Node and
-`client/ssh.mjs` in `-e` if rsync starts from another directory.
+`wasm_client/ssh.mjs` in `-e` if rsync starts from another directory.
 
-The deployed gateway's CPU/session limits still apply. Large transfers can fail
-on the current Free plan; this client does not automatically replay commands or
-restart partial streams.
+## Application SDK
 
-## Native SSH and general TCP
+Application code can import `connectSSH` and `runCommand` from `ssh-client.mjs`,
+and `copyFiles` from `sftp.mjs`. `connectSSH` opens a local WASM transport by
+default; a caller may provide an `openTcp` implementation for another adapter.
+Always close the returned SSH session in `finally`.
 
-The original dependency-free adapter is unchanged:
-
-```sh
-ssh -o "ProxyCommand=node $PWD/client/transport.mjs stdio --port 22" user@host
-node client/transport.mjs forward --listen 127.0.0.1:8080 --port 80
-```
-
-The portable raw-byte SDK is `transport-client.mjs`. Application code can import
-`connectSSH` and `runCommand` from `ssh-client.mjs`, and `copyFiles` from
-`sftp.mjs`. Always close the returned SSH session in `finally`.
-
-All new functionality is client-side. Installing or updating these tools needs
-no Worker redeployment. Get them from the repository; the existing Worker-hosted
-`transport.mjs` and `transport-client.mjs` downloads provide the generic TCP
-adapter and SDK.
+For file-based credential loading, diagnostics, and generic TCP use, see
+[the local WASM documentation](../wasm_client/README.md).

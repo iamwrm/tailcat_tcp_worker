@@ -22,7 +22,7 @@ let fixture, info, dir, sftp;
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), 'tailcat-wasm-test-'));
   sftp = await startSSHFixture(dir);
-  execFileSync('go', ['build', '-o', join(dir, 'fixture'), './test/fixture'], { cwd: root + 'worker', env: { ...process.env, GOTOOLCHAIN: 'go1.27.1' }, stdio: 'pipe' });
+  execFileSync('go', ['build', '-o', join(dir, 'fixture'), './test/fixture'], { cwd: root + 'wasm_client/go', env: { ...process.env, GOTOOLCHAIN: 'go1.27.1' }, stdio: 'pipe' });
   fixture = spawn(join(dir, 'fixture'), [], { env: { ...process.env, TS_DEBUG_USE_DERP_HTTP: 'true', TEST_SFTP_PORT: String(sftp.port) }, stdio: ['ignore', 'pipe', 'pipe'] });
   fixture.stderr.resume();
   const lines = createInterface({ input: fixture.stdout });
@@ -35,7 +35,7 @@ before(async () => {
 after(async () => { fixture?.kill(); await sftp?.close(); if (dir) await rm(dir, { recursive: true, force: true }); });
 const opts = extra => ({ address: info.tailcat_address, derpMapURL: info.map_url, allowLocalRelayForTests: true, timeout: 20, ...extra });
 const tcp = (port, extra) => openTcp(opts({ port, ...extra }));
-const ssh = extra => connectSSH(opts({ port: 22, username: info.username, privateKey: info.private_key, hostKey: info.host_key_sha256, ...extra }), { openTcp });
+const ssh = extra => connectSSH(opts({ port: 22, username: info.username, privateKey: info.private_key, hostKey: info.host_key_sha256, ...extra }));
 async function collect(t) { const out = []; for await (const b of t) out.push(b); return Buffer.concat(out); }
 const sink = () => { const chunks = []; return { chunks, stream: new Writable({ write(b, enc, done) { chunks.push(Buffer.from(b)); done(); } }) }; };
 
@@ -125,10 +125,9 @@ test('credential files produce the pinned host fingerprint without printing secr
   await writeFile(join(dir, 'id_ed25519'), info.private_key, { mode: 0o600 });
   await writeFile(join(dir, 'tailcat-address.txt'), info.tailcat_address, { mode: 0o600 });
   await writeFile(join(dir, 'ssh-host-key.pub'), info.host_key_public);
-  const { args, env } = await credentials(['exec', '--credentials-dir', dir, '--user', info.username, '--', 'probe'], { TAILCAT_URL: 'https://must-not-contact.invalid' });
+  const { args, env } = await credentials(['exec', '--credentials-dir', dir, '--user', info.username, '--', 'probe'], {});
   assert.equal(env.SSH_HOST_KEY, info.host_key_sha256); assert.equal(env.TAILCAT_ADDR, info.tailcat_address);
-  assert.equal(env.TAILCAT_URL, undefined); assert.deepEqual(args, ['exec', '--user', info.username, '--', 'probe']);
-  await assert.rejects(credentials(['exec', '--url', 'https://worker.invalid', '--', 'probe']), /gateway options/);
+  assert.deepEqual(args, ['exec', '--user', info.username, '--', 'probe']);
 });
 test('invalid credentials and insecure relay map are rejected without a network attempt', async () => {
   await assert.rejects(openTcp({ address: 'secret-invalid', port: 22 }), /valid Tailcat/);

@@ -1,20 +1,12 @@
 {
-  "name": "tailcat-tcp-worker",
+  "name": "tailcat-local-wasm",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "dev": "npm run build && cd worker && wrangler dev",
-    "test": "node --test worker/test/*.test.mjs",
-    "build:wasm-client": "node wasm_client/build.mjs",
-    "test:wasm-client": "node --test wasm_client/test/*.test.mjs",
-    "deploy": "npm run build && cd worker && wrangler deploy",
-    "check": "cd worker && wrangler deploy --dry-run"
-  },
-  "devDependencies": {
-    "miniflare": "^5.20260915.0-alpha",
-    "wrangler": "^4.132.0"
+    "build": "node wasm_client/build.mjs",
+    "test": "node --test wasm_client/test/*.test.mjs",
+    "check": "node wasm_client/verify.mjs"
   },
   "engines": {
     "node": ">=22.15.0"

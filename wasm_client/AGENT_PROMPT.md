@@ -3,13 +3,13 @@ Use this prompt with the private credential ZIP:
 ```text
 Test the local Tailcat WASM client in your Linux sandbox.
 Repository: https://github.com/iamwrm/tailcat_tcp_worker
-Use wasm_client/, not the Cloudflare Worker or native Tailcat.
+Use the local tool in wasm_client/.
 
 The uploaded ZIP contains id_ed25519, tailcat-address.txt,
 and ssh-host-key.pub. SSH username: wr. Destination port: 22.
 
 1. Clone the repository. Use Node.js 22.15 or newer.
-   If already cloned, update to the latest main (including the slow-proxy startup fix).
+   If already cloned, update to the latest main.
    From the repository root, run:
    npm ci --omit=dev
    node wasm_client/verify.mjs
@@ -25,8 +25,8 @@ and ssh-host-key.pub. SSH username: wr. Destination port: 22.
 
 4. Enforce a 75-second external timeout. Keep host verification enabled.
    Use the bundled relay map and existing proxy/CA environment settings.
-   Do not install native Tailcat, change sandbox permissions, or use
-   the Worker as a fallback: this test must use local WASM and DERP.
+   Use local WASM and DERP. Do not install native Tailcat or change
+   sandbox permissions.
 
 5. Report Node version, repository commit, elapsed time, sanitized
    stdout/stderr, and exit status. If blocked, identify the failing

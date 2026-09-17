@@ -1,4 +1,4 @@
-// TCP v1 byte accounting and bounded batching. The Go side has one reader and
+// Local TCP byte accounting and bounded batching. The Go side has one reader and
 // one writer; ready operations return synchronously, blocked operations wait.
 export const WINDOW = 65536, FRAME = 16384;
 const CREDIT_BATCH = WINDOW / 2, BATCH_DELAY = 1, STALL_TIMEOUT = 30000;
@@ -34,7 +34,7 @@ export function createBridge({ sendControl, sendData, onError,
       stallTimer = schedule(checkStall, STALL_TIMEOUT);
     }
     outstanding += bytes.byteLength;
-    // WebSocket.send snapshots the bytes synchronously, so the source buffer
+    // postMessage snapshots the bytes synchronously, so the source buffer
     // may be reused once send returns.
     sendData(bytes);
   }
