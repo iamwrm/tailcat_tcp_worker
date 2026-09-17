@@ -5,7 +5,7 @@ read-only command if your target differs.
 
 ```text
 Use the uploaded credential ZIP to SSH from your Linux sandbox using
-local Tailcat WASM. Repository: https://github.com/iamwrm/tailcat_tcp_worker
+local Tailcat WASM. Repository: https://github.com/iamwrm/tailcat_wasm
 SSH username: wr; destination port: 22.
 
 1. Clone the repository, or update an existing checkout to latest main.

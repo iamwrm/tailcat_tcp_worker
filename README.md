@@ -60,5 +60,6 @@ artifact. The build pins Go 1.27.1 and all dependencies.
 - `prompts/`: credential setup and web-agent SSH instructions.
 
 The Cloudflare implementation and deployment tooling have been removed. This
-repository has one runtime path: local WASM. Its GitHub repository name remains
-`tailcat_tcp_worker`.
+repository has one runtime path: local WASM.
+
+Repository: [iamwrm/tailcat_wasm](https://github.com/iamwrm/tailcat_wasm).

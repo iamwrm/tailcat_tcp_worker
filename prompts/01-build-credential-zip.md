@@ -8,7 +8,7 @@ Create a private credential ZIP for the local Tailcat WASM SSH client.
 Target SSH alias: ubuntu-n150-1
 SSH user: wr; destination port: 22
 Remote Tailcat address file: ~/.local/state/tailcat-worker/address
-Repository: https://github.com/iamwrm/tailcat_tcp_worker
+Repository: https://github.com/iamwrm/tailcat_wasm
 
 1. Use the existing trusted SSH connection to the target. Keep host-key
    verification enabled. If its identity is not already trusted, ask me
