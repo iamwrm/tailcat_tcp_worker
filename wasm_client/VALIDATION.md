@@ -50,9 +50,8 @@ node wasm_client/test/live.mjs /private/extracted-credentials wr
 ```
 
 This validates that the JavaScript/WASM route avoids the native Linux netlink
-requirement. The user's web agent still needs a separate test: its outbound
-HTTPS/WSS policy may block DERP even though it allowed the Cloudflare Worker.
-Use [AGENT_PROMPT.md](AGENT_PROMPT.md) with the existing private ZIP.
+requirement. Outbound HTTPS/WSS access is still required. See the actual
+web-agent validation below and [AGENT_PROMPT.md](AGENT_PROMPT.md).
 
 ## Slow proxy startup regression
 
@@ -62,3 +61,27 @@ HTTP CONNECT fixture delayed relay startup by 11 seconds: the old artifact
 failed, and the client-only deadline overlay passed in 11.307 seconds. The
 full 17-test WASM suite passed after rebuilding. Session cancellation and
 shorter caller deadlines remain enforced.
+
+## Actual web-agent sandbox validation
+
+The existing ChatGPT conversation was tested through Chrome with the user's
+uploaded credential ZIP. Node **24.19.0** verified and ran commit
+`bccaf0a1d90a962e313907f036fbd50acb95db18` using a 60-second session timeout
+and a 75-second external limit.
+
+- `hostname; id; uname -a`: **exit 0 in 14.45 seconds**; hostname
+  `ubuntu-n150-1`, user `wr` (UID 1000).
+- Bundled map loaded locally; public relay WebSocket opened successfully.
+- Some optional relay probes were aborted, but another returned HTTP 200;
+  these probe failures did not prevent SSH.
+- Host-key and TLS verification stayed enabled, and existing proxy/CA
+  configuration was preserved.
+- No native Tailcat, Cloudflare Worker fallback, permission changes, or
+  remote-server modifications were used.
+- The web agent reported that helpers stopped, extracted credentials were
+  removed, and the original uploaded ZIP was preserved.
+
+The earlier sandbox failure was a startup deadline race: the relay tunnel
+opened around 10 seconds, matching the original 10-second internal deadlines.
+The client-only startup extension resolves the observed failure. This is a
+single end-to-end observation, not a guarantee for all outbound proxy policies.
