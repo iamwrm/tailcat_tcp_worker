@@ -48,7 +48,12 @@ try {
   const { makeGo } = await import('./dist/go-runtime.js');
   network = await createNetwork({ mapURL: workerData.input.derp_map_url,
     mapFile: workerData.derpMapFile, liveRelayMap: workerData.liveRelayMap,
-    onFailure(message) { networkFailure = message; },
+    onFailure(message, { stage }) {
+      // Optional HTTPS probes may fail during teardown or in restricted
+      // sandboxes. They must not overwrite the actual map/WebSocket failure.
+      if (stage === 'relay_map' || stage === 'relay_websocket') networkFailure = message;
+    },
+    onDiagnostic(event) { if (workerData.diagnostics) send({ type: 'diagnostic', event }); },
   });
   runtime = runtimeScope({ signal: aborter.signal }, workerData.input, json => {
     const event = JSON.parse(json);

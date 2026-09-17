@@ -40,9 +40,13 @@ async function collect(t) { const out = []; for await (const b of t) out.push(b)
 const sink = () => { const chunks = []; return { chunks, stream: new Writable({ write(b, enc, done) { chunks.push(Buffer.from(b)); done(); } }) }; };
 
 test('HTTP over real local DERP + WASM; client FIN and graceful close', async () => {
-  const t = await tcp(80), result = collect(t);
+  const trace = [];
+  const t = await tcp(80, { onDiagnostic: event => trace.push(event) }), result = collect(t);
   await t.write(Buffer.from('GET /hello HTTP/1.1\r\nHost: fixture\r\nConnection: close\r\n\r\n')); t.end();
   assert.match((await result).toString(), /HTTP through generic TCP/); await t.closed;
+  assert.ok(trace.some(e => e.stage === 'relay_map' && e.status === 200));
+  assert.ok(trace.some(e => e.stage === 'relay_websocket' && e.result === 'open'));
+  assert.ok(!JSON.stringify(trace).includes(info.tailcat_address));
 });
 test('17 MiB binary echo retains exact bytes with bounded flow control', { timeout: 60000 }, async () => {
   const t = await tcp(7001, { timeout: 50 });

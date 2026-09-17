@@ -13,7 +13,9 @@ export async function credentials(argv, baseEnv = process.env) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--') positional = true;
-    if (!positional && arg === '--live-relay-map') {
+    if (!positional && arg === '--diagnostics') {
+      transportOptions.onDiagnostic = event => process.stderr.write('WASM network: ' + JSON.stringify(event) + '\n');
+    } else if (!positional && arg === '--live-relay-map') {
       transportOptions.liveRelayMap = true;
     } else if (!positional && arg in flags) {
       if (!argv[i + 1]) throw new Error(`Missing value for ${arg}`);
@@ -58,6 +60,7 @@ export async function main(argv = process.argv.slice(2)) {
       'The directory contains id_ed25519, tailcat-address.txt, and ssh-host-key.pub.\n\n' +
       'Relay map: bundled by default; --live-relay-map fetches it, --derp-map-file FILE supplies another.\n' +
       'HTTPS_PROXY/HTTP_PROXY/NO_PROXY (also lowercase) apply to HTTPS and relay WebSockets.\n\n' +
+      '--diagnostics prints connection stages and safe error codes, never credentials.\n\n' +
       sshHelp.replaceAll('client/ssh.mjs', 'wasm_client/ssh.mjs').split('\n').filter(line => !line.includes('--url ') && !line.includes('--allow-local ')).join('\n'));
     return 0;
   }

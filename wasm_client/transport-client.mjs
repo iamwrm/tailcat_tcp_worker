@@ -3,7 +3,7 @@ import { Worker } from 'node:worker_threads';
 // Same application-facing contract as client/transport-client.mjs, with a
 // local WASM instance instead of a remote Cloudflare gateway. One reader/writer.
 export async function openTcp({ address, port, clientKey, timeout = 1800, signal,
-  derpMapURL = 'https://tailcat.dev/derpmap.json', derpMapFile, liveRelayMap = false, allowLocalRelayForTests = false }) {
+  derpMapURL = 'https://tailcat.dev/derpmap.json', derpMapFile, liveRelayMap = false, allowLocalRelayForTests = false, onDiagnostic }) {
   if (typeof address !== 'string' || address.length > 4096 || !/^tc[A-Za-z0-9_-]+$/.test(address)) throw new Error('Supply a valid Tailcat address');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Supply a TCP port from 1 to 65535');
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > 3600) throw new Error('Timeout must be 1–3600 seconds');
@@ -14,7 +14,7 @@ export async function openTcp({ address, port, clientKey, timeout = 1800, signal
   const worker = new Worker(new URL('./runtime.mjs', import.meta.url), {
     workerData: { input: { tailcat_address: address, tailcat_client_key: clientKey,
       port, timeout_seconds: timeout, derp_map_url: map.href, allow_embedded_relay: false },
-      derpMapFile, liveRelayMap, allowLocalRelayForTests },
+      derpMapFile, liveRelayMap, allowLocalRelayForTests, diagnostics: typeof onDiagnostic === 'function' },
     // Do not inherit CLI-only --input-type or expose raw runtime diagnostics.
     execArgv: [], stdout: true, stderr: true,
   });
@@ -42,6 +42,7 @@ export async function openTcp({ address, port, clientKey, timeout = 1800, signal
   worker.on('message', m => {
     if (ended) return;
     try {
+      if (m.type === 'diagnostic') { onDiagnostic?.(m.event); return; }
       if (m.type === 'error') { const e = new Error(`${m.code}: ${m.message}`); e.code = m.code; throw e; }
       if (m.type === 'opened' && !opened && m.window === 65536 && m.max_frame === 16384) {
         opened = true; clearTimeout(openTimer); resolveOpen(); return;

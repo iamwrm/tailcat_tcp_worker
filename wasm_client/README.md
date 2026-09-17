@@ -115,6 +115,13 @@ The SDK equivalents are `liveRelayMap: true` and `derpMapFile`.
 Errors identify the map-fetch or relay-WebSocket stage and, when available,
 a safe error code such as `ECONNREFUSED`, `ENOTFOUND`, or
 `SELF_SIGNED_CERT_IN_CHAIN`. They do not expose raw errors or proxy URLs.
+Add `--diagnostics` to print safe connection stages to stderr. This shows
+whether the map loaded locally, relay HTTPS probe outcomes, and WebSocket
+open/failure events. It includes only relay hostnames learned from the public
+map, numeric status codes, and proxy/extra-CA presence booleans. It never prints
+request paths/queries, proxy URLs, the Tailcat address, or SSH credentials.
+Optional relay probes cannot overwrite a map or WebSocket failure in the final
+error. For SDK callers, `onDiagnostic(event)` receives the same trace.
 
 ## Packaged artifacts and development
 
