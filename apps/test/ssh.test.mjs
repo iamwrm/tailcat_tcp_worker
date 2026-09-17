@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { Duplex, PassThrough, Writable } from 'node:stream';
-import { runCommand } from '../../client/ssh-client.mjs';
-import { parseArguments } from '../../client/ssh-cli.mjs';
+import { runCommand } from '../ssh-client.mjs';
+import { parseArguments } from '../ssh-cli.mjs';
 
 test('SSH captures exit status delivered in the same parser turn as channel creation',async()=>{
   const client=new EventEmitter(), out=[],err=[];

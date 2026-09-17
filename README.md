@@ -18,7 +18,7 @@ directory as `tailcat-address.txt`, `id_ed25519`, and `ssh-host-key.pub`.
 ```sh
 npm ci --omit=dev
 npm run check
-node wasm_client/ssh.mjs exec \
+node apps/ssh.mjs exec \
   --credentials-dir /private/credentials \
   --user wr --timeout 60 -- 'hostname; id; uname -a'
 ```
@@ -28,18 +28,18 @@ local SSH adapter. The bundled relay map avoids a bootstrap fetch; HTTPS/WSS
 uses the existing proxy and trusted-CA configuration.
 
 ```sh
-node wasm_client/ssh.mjs shell --credentials-dir /private/credentials --user wr
-node wasm_client/ssh.mjs upload --credentials-dir /private/credentials --user wr ./file.txt /tmp/file.txt
-node wasm_client/ssh.mjs download --credentials-dir /private/credentials --user wr /tmp/file.txt ./file.txt
+node apps/ssh.mjs shell --credentials-dir /private/credentials --user wr
+node apps/ssh.mjs upload --credentials-dir /private/credentials --user wr ./file.txt /tmp/file.txt
+node apps/ssh.mjs download --credentials-dir /private/credentials --user wr /tmp/file.txt ./file.txt
 ```
 
 SFTP needs no local `scp` or `sftp`. The `rsh` adapter supports rsync with rsync
 installed locally and remotely. Other applications can use the local TCP SDK.
 
-- [Usage, configuration, and generic TCP SDK](wasm_client/README.md)
-- [SSH/SFTP and rsync details](client/README.md)
+- [Usage, configuration, and generic TCP SDK](transport/README.md)
+- [SSH/SFTP and rsync details](apps/README.md)
 - [Credential ZIP setup and web-agent SSH prompts](prompts/README.md)
-- [Validation results](wasm_client/VALIDATION.md)
+- [Validation results](transport/VALIDATION.md)
 - [Local transport contract](PROTOCOL.md)
 
 ## Development
@@ -54,8 +54,8 @@ npm run check
 Builds and integration tests require Go; normal use runs the checked-in WASM
 artifact. The build pins Go 1.27.1 and all dependencies.
 
-- `wasm_client/`: CLI, TCP SDK, runtime, packaged WASM, Go source, and tests.
-- `client/`: local SSH/SFTP application adapter and CLI implementation.
+- `transport/`: TCP SDK, WASM runtime, Go source, build tooling, and transport tests.
+- `apps/`: SSH entry point, interactive shell, SFTP and rsync adapters, and application tests.
 - `scripts/`: Go build tags and the TCP shutdown patch.
 - `prompts/`: credential setup and web-agent SSH instructions.
 

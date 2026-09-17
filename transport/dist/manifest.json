@@ -2,7 +2,7 @@
   "format": 1,
   "go": "go1.27.1",
   "target": "js/wasm",
-  "source": "wasm_client/go/cmd/tailcatwasm",
+  "source": "transport/go/cmd/tailcatwasm",
   "startupTimeoutSeconds": {
     "relay": 30,
     "ping": 30,
@@ -10,12 +10,12 @@
   },
   "files": {
     "tailcat.wasm.gz": {
-      "bytes": 6227248,
-      "sha256": "406c280967cee3139a6d7e735f4d09ad73ceab0bb749c823c47b40555c56631d"
+      "bytes": 6227245,
+      "sha256": "d59fde5f9e8ba386ba854b58d79814dbd5a5b978d0dc7e09c617a986f269810f"
     },
     "tailcat.wasm": {
       "bytes": 27034844,
-      "sha256": "3bfb287201c9fdb1903dcf412065759d1244a5de2c44698d8496ac0c2a24b601"
+      "sha256": "403eface26895e74897b90833ee4c0bae4807077fc0a4b5789ea992e58234b1d"
     },
     "go-runtime.js": {
       "sha256": "53292f22aa4a387bd757b847038561658a8c148585f46d12d5c2496cdd8114d3"

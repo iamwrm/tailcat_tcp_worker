@@ -32,7 +32,7 @@ Repository: https://github.com/iamwrm/tailcat_tcp_worker
 
 5. Clone or update the repository. Run npm ci --omit=dev and npm run check.
    Test the new files with:
-   node wasm_client/ssh.mjs exec --credentials-dir PRIVATE_DIR \
+   node apps/ssh.mjs exec --credentials-dir PRIVATE_DIR \
      --user wr --port 22 --timeout 60 -- 'hostname; id'
    Keep host-key and TLS verification enabled; use a 75-second outer timeout.
 

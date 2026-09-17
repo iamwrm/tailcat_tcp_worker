@@ -3,7 +3,7 @@
 ## Automated checks
 
 - `npm test`: **27 passed** on Node 26/macOS ARM64.
-- `node wasm_client/verify.mjs`: packaged gzip, WASM and Go runtime hashes match.
+- `node transport/verify.mjs`: packaged gzip, WASM and Go runtime hashes match.
 
 The suite uses real DERP, WireGuard and TCP connections to disposable local
 fixtures. It covers HTTP, a 17 MiB binary echo with SHA256 equality, both TCP
@@ -45,7 +45,7 @@ They are individual observations, not performance guarantees. No remote files
 or server configuration were changed by these checks. Live SSH is opt-in:
 
 ```sh
-node wasm_client/test/live.mjs /private/extracted-credentials wr
+node apps/test/live.mjs /private/extracted-credentials wr
 ```
 
 This validates that the JavaScript/WASM route avoids the native Linux netlink
@@ -88,7 +88,7 @@ single end-to-end observation, not a guarantee for all outbound proxy policies.
 ## Local-only migration and deployment retirement
 
 The Go source, module files, DERP fixture, JavaScript bridge, and bridge tests
-now live under `wasm_client/`. A clean local build and test run no longer need
+now live under `transport/`. A clean local build and test run no longer need
 Cloudflare tooling or any `worker/` directory. The SSH adapter defaults to the
 local WASM SDK; gateway clients, URL flags, deployment scripts, and website
 assets are removed. Tests retain the SSH exit-status race check and cover

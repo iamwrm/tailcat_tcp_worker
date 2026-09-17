@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node wasm_client/build.mjs",
-    "test": "node --test wasm_client/test/*.test.mjs",
-    "check": "node wasm_client/verify.mjs"
+    "build": "node transport/build.mjs",
+    "test": "node --test apps/test/*.test.mjs transport/test/*.test.mjs",
+    "check": "node transport/verify.mjs"
   },
   "engines": {
     "node": ">=22.15.0"

@@ -1,5 +1,5 @@
 // Opt-in read-only live SSH validation. No network activity unless invoked.
-// node wasm_client/test/live.mjs /private/credentials [username]
+// node apps/test/live.mjs /private/credentials [username]
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';

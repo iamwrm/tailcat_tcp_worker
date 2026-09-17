@@ -6,9 +6,9 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const sourceDir = root + 'wasm_client/go/';
-const buildDir = root + 'wasm_client/.build/';
-const dist = root + 'wasm_client/dist/';
+const sourceDir = root + 'transport/go/';
+const buildDir = root + 'transport/.build/';
+const dist = root + 'transport/dist/';
 const env = { ...process.env, GOTOOLCHAIN: 'go1.27.1' };
 const go = (...args) => execFileSync('go', args, { cwd: sourceDir, env, encoding: 'utf8' }).trim();
 mkdirSync(buildDir, { recursive: true });
@@ -62,7 +62,7 @@ const compressed = gzipSync(wasm, { level: 9 });
 writeFileSync(dist + 'tailcat.wasm.gz', compressed);
 const sha256 = data => createHash('sha256').update(data).digest('hex');
 writeFileSync(dist + 'manifest.json', JSON.stringify({
-  format: 1, go: 'go1.27.1', target: 'js/wasm', source: 'wasm_client/go/cmd/tailcatwasm',
+  format: 1, go: 'go1.27.1', target: 'js/wasm', source: 'transport/go/cmd/tailcatwasm',
   startupTimeoutSeconds: { relay: 30, ping: 30, dial: 40 },
   files: {
     'tailcat.wasm.gz': { bytes: compressed.length, sha256: sha256(compressed) },

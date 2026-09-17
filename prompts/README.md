@@ -11,5 +11,5 @@ file path is a server-side location, not a Cloudflare dependency.
 
 The ZIP contains three files at its root: `id_ed25519`, `tailcat-address.txt`,
 and `ssh-host-key.pub`. It grants access to the target and must stay private.
-See [the client documentation](../wasm_client/README.md) for interactive shells,
+See [the client documentation](../transport/README.md) for interactive shells,
 SFTP transfers, proxy settings, and other commands.

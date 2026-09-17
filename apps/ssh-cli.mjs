@@ -5,11 +5,11 @@ import { copyFiles } from './sftp.mjs';
 
 export const help = `Node SSH over Tailcat TCP — no local ssh/scp executable required.
 
-  node wasm_client/ssh.mjs exec [options] -- 'uname -a'
-  node wasm_client/ssh.mjs shell [options]
-  node wasm_client/ssh.mjs upload [options] LOCAL REMOTE
-  node wasm_client/ssh.mjs download [options] REMOTE LOCAL
-  rsync -av -e 'node wasm_client/ssh.mjs rsh' ./source/ user@target:/destination/
+  node apps/ssh.mjs exec [options] -- 'uname -a'
+  node apps/ssh.mjs shell [options]
+  node apps/ssh.mjs upload [options] LOCAL REMOTE
+  node apps/ssh.mjs download [options] REMOTE LOCAL
+  rsync -av -e 'node apps/ssh.mjs rsh' ./source/ user@target:/destination/
 
 Options:
   --user USER, -l USER     SSH user (or SSH_USER)

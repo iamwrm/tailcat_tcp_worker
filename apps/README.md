@@ -1,4 +1,4 @@
-# Client tools
+# SSH applications
 
 Run these from the repository root. Node.js 22.15+ is required. The application adapter uses the pinned `ssh2` package over the local WASM transport:
 
@@ -21,8 +21,8 @@ The target still needs an SSH server; file copies also need its SFTP subsystem.
 These commands do not invoke a local `ssh` executable:
 
 ```sh
-node wasm_client/ssh.mjs exec -- 'uname -a && uptime'
-node wasm_client/ssh.mjs shell
+node apps/ssh.mjs exec -- 'uname -a && uptime'
+node apps/ssh.mjs shell
 ```
 
 `exec` forwards stdin, stdout and stderr as binary streams and returns the remote
@@ -53,10 +53,10 @@ the client. These are file-copy operations, not the legacy SCP wire protocol or 
 complete clone of scp's command-line syntax.
 
 ```sh
-node wasm_client/ssh.mjs upload './local file.txt' '/tmp/remote file.txt'
-node wasm_client/ssh.mjs download '/tmp/remote file.txt' './downloaded file.txt'
-node wasm_client/ssh.mjs upload --recursive ./project /tmp/project-copy
-node wasm_client/ssh.mjs download --recursive /tmp/project-copy ./downloaded-project
+node apps/ssh.mjs upload './local file.txt' '/tmp/remote file.txt'
+node apps/ssh.mjs download '/tmp/remote file.txt' './downloaded file.txt'
+node apps/ssh.mjs upload --recursive ./project /tmp/project-copy
+node apps/ssh.mjs download --recursive /tmp/project-copy ./downloaded-project
 ```
 
 Destinations are **exact paths**, including directory copies. Their parent
@@ -81,11 +81,11 @@ still provides synchronization, delta transfer, metadata and its own options.
 
 ```sh
 rsync -rt --stats \
-  -e 'node wasm_client/ssh.mjs rsh' \
+  -e 'node apps/ssh.mjs rsh' \
   ./source/ "$SSH_USER@target:/tmp/destination/"
 
 rsync -rt \
-  -e 'node wasm_client/ssh.mjs rsh' \
+  -e 'node apps/ssh.mjs rsh' \
   "$SSH_USER@target:/tmp/destination/" ./download/
 ```
 
@@ -93,7 +93,7 @@ rsync -rt \
 it. The adapter accepts rsync's `-l USER` argument and forwards its remote command
 using OpenSSH-compatible argument joining. The command stream never allocates a
 PTY, and stdout contains only remote bytes. Use absolute paths to Node and
-`wasm_client/ssh.mjs` in `-e` if rsync starts from another directory.
+`apps/ssh.mjs` in `-e` if rsync starts from another directory.
 
 ## Application SDK
 
@@ -103,4 +103,4 @@ default; a caller may provide an `openTcp` implementation for another adapter.
 Always close the returned SSH session in `finally`.
 
 For file-based credential loading, diagnostics, and generic TCP use, see
-[the local WASM documentation](../wasm_client/README.md).
+[the local WASM documentation](../transport/README.md).

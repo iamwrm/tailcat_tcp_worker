@@ -1,6 +1,6 @@
 # Local TCP transport contract
 
-`openTcp(options)` in `wasm_client/transport-client.mjs` starts a private Node
+`openTcp(options)` in `transport/transport-client.mjs` starts a private Node
 thread running Tailcat WebAssembly and opens a TCP port exposed by the remote
 Tailcat server. This is an in-process SDK, not a hosted HTTP/WebSocket API.
 

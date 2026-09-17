@@ -22,7 +22,7 @@ SSH username: wr; destination port: 22.
    shell tracing. Keep them outside the repository and public outputs.
 
 3. Run, replacing PRIVATE_DIR with the extraction directory:
-   node wasm_client/ssh.mjs exec --credentials-dir PRIVATE_DIR \
+   node apps/ssh.mjs exec --credentials-dir PRIVATE_DIR \
      --user wr --port 22 --timeout 60 -- 'hostname; id; uname -a'
    Enforce a 75-second external timeout and stop the child on timeout.
 

@@ -2,9 +2,9 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { main as sshMain, help as sshHelp } from '../client/ssh-cli.mjs';
-import { fingerprint } from '../client/ssh-client.mjs';
-import { openTcp } from './transport-client.mjs';
+import { main as sshMain, help as sshHelp } from './ssh-cli.mjs';
+import { fingerprint } from './ssh-client.mjs';
+import { openTcp } from '../transport/transport-client.mjs';
 
 export async function credentials(argv, baseEnv = process.env) {
   const args = [], files = {}, env = { ...baseEnv }, transportOptions = {};
@@ -52,7 +52,7 @@ export async function credentials(argv, baseEnv = process.env) {
 export async function main(argv = process.argv.slice(2)) {
   if (!argv.length || ['--help', '-h'].includes(argv[0])) {
     process.stdout.write('Local Tailcat WASM + Node SSH. No native Tailcat or ssh executable.\n\n' +
-      '  node wasm_client/ssh.mjs exec --credentials-dir /private/credentials --user wr --timeout 60 -- \'hostname; id; uname -a\'\n\n' +
+      '  node apps/ssh.mjs exec --credentials-dir /private/credentials --user wr --timeout 60 -- \'hostname; id; uname -a\'\n\n' +
       'File options: --credentials-dir DIR, --address-file FILE, --host-key-file FILE, --client-key-file FILE.\n' +
       'The directory contains id_ed25519, tailcat-address.txt, and ssh-host-key.pub.\n\n' +
       'Relay map: bundled by default; --live-relay-map fetches it, --derp-map-file FILE supplies another.\n' +

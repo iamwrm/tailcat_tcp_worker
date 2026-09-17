@@ -1,7 +1,7 @@
-# Local Tailcat WASM client
+# Tailcat WASM transport
 
 Run Tailcat's `js/wasm` build inside Node.js, connecting directly to DERP over
-WebSockets. The SSH adapter uses `ssh2` locally. No native
+WebSockets. The SSH adapter in `apps/` uses `ssh2` locally. No native
 Tailcat, OpenSSH, Go installation, root, TUN device, or Linux netlink is needed
 to run the tool. This is a Node CLI and SDK; a browser UI is not included.
 
@@ -27,8 +27,8 @@ Requires Node.js **22.15+** and npm. From the repository root:
 
 ```sh
 npm ci --omit=dev
-node wasm_client/verify.mjs
-node wasm_client/ssh.mjs exec \
+node transport/verify.mjs
+node apps/ssh.mjs exec \
   --credentials-dir /private/extracted-credentials \
   --user wr --timeout 60 -- 'hostname; id; uname -a'
 ```
@@ -48,7 +48,7 @@ Remote command output is application-controlled and must be handled accordingly.
 Other ways to supply files:
 
 ```sh
-node wasm_client/ssh.mjs exec \
+node apps/ssh.mjs exec \
   --address-file /private/tailcat-address.txt \
   --host-key-file /private/ssh-host-key.pub \
   --key /private/id_ed25519 --user wr -- 'id'
@@ -65,14 +65,14 @@ Short Tailcat addresses with a PSK are required; embedded-relay
 The SSH adapter supports commands, interactive shells, and file transfers:
 
 ```sh
-node wasm_client/ssh.mjs shell --credentials-dir /private/credentials --user wr
-node wasm_client/ssh.mjs upload --credentials-dir /private/credentials --user wr ./file.bin /tmp/file.bin
-node wasm_client/ssh.mjs download --credentials-dir /private/credentials --user wr /tmp/file.bin ./file.bin
+node apps/ssh.mjs shell --credentials-dir /private/credentials --user wr
+node apps/ssh.mjs upload --credentials-dir /private/credentials --user wr ./file.bin /tmp/file.bin
+node apps/ssh.mjs download --credentials-dir /private/credentials --user wr /tmp/file.bin ./file.bin
 ```
 
 `shell` needs a terminal; Ctrl+] disconnects. Files use SFTP, with `--recursive`
 for directory trees. `rsh` is available as an rsync transport; rsync still needs
-to be installed locally and remotely. See [the shared client documentation](../client/README.md).
+to be installed locally and remotely. See [the SSH application documentation](../apps/README.md).
 `exec` returns the remote exit code; setup or transport failures return 255.
 `--timeout` limits the entire transport lifetime, including startup (1–3600
 seconds, default 1800). Local startup permits 30 seconds for relay setup and
@@ -81,14 +81,14 @@ the Tailcat ping, 40 seconds for TCP dialing, and 45 seconds overall. A shorter
 
 ## Generic TCP SDK
 
-SSH is one adapter. Import `openTcp` from `wasm_client/transport-client.mjs`
+SSH is one adapter. Import `openTcp` from `transport/transport-client.mjs`
 for other applications. Its contract supports one reader,
 sequential awaited writes, bounded 64 KiB windows, 16 KiB frames, TCP half-close,
 cancellation, and a `closed` promise. Each connection has its own WASM thread.
 
 ```js
 import { readFile } from 'node:fs/promises';
-import { openTcp } from './wasm_client/transport-client.mjs';
+import { openTcp } from './transport/transport-client.mjs';
 const tcp = await openTcp({
   address: (await readFile('/private/tailcat-address.txt', 'utf8')).trim(),
   port: 80, timeout: 30,
@@ -129,7 +129,7 @@ error. For SDK callers, `onDiagnostic(event)` receives the same trace.
 `dist/tailcat.wasm.gz` (about 6 MiB) and `dist/go-runtime.js` are checked in, with
 compressed/uncompressed SHA256 hashes in `dist/manifest.json`. Runtime checks
 detect accidental corruption; the manifest itself is trusted repository content,
-not an independent signature. Rebuilds use `wasm_client/go/cmd/tailcatwasm`, the pinned
+not an independent signature. Rebuilds use `transport/go/cmd/tailcatwasm`, the pinned
 Go 1.27.1 toolchain and module graph, and the reviewed TCP shutdown patch.
 The build applies two exact-match upstream deadline replacements using a Go
 overlay over private dependency copies. The module cache stays unchanged;

@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { constants } from 'node:os';
 import ssh2 from 'ssh2';
-import { openTcp } from '../wasm_client/transport-client.mjs';
+import { openTcp } from '../transport/transport-client.mjs';
 
 // Adapt the bounded transport to the socket interface used by ssh2. A single
 // reader and the Writable queue serialize reads/writes and preserve backpressure.

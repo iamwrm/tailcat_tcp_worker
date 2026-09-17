@@ -6,4 +6,4 @@ node_modules/
 .env.*
 .dev.vars
 .dev.vars.*
-wasm_client/.build/
+transport/.build/
